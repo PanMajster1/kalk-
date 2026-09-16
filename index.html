@@ -18,7 +18,7 @@
       --accent-red: #ef4444;
     }
     
-    * { box-sizing: border-box; touch-action: manipulation; }
+    * { box-sizing: border-box; touch-action: none; }
     
     body {
       margin: 0;
@@ -71,13 +71,28 @@
       cursor: grabbing;
     }
 
-    /* Przyciski kontrolne na wykresie */
+    /* Przyciski kontrolne w prawym dolnym rogu */
     .graph-controls {
       position: absolute;
       bottom: 10px;
       right: 10px;
       display: flex;
       gap: 6px;
+      z-index: 10;
+    }
+
+    /* Przycisk zamknięcia pełnego ekranu (widoczny tylko w trybie fullscreen) */
+    .graph-exit-fs {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: none;
+      gap: 6px;
+      z-index: 10;
+    }
+
+    body.fullscreen-mode .graph-exit-fs {
+      display: flex;
     }
 
     .graph-btn {
@@ -135,7 +150,7 @@
       display: flex;
       flex-direction: column;
       gap: 14px;
-      transition: opacity 0.3s ease;
+      touch-action: auto; /* Pozwala na scrollowanie panelu */
     }
     
     .control-row {
@@ -185,6 +200,7 @@
       margin: 0 10px;
       display: flex;
       align-items: center;
+      touch-action: auto;
     }
     
     input[type=range] {
@@ -266,11 +282,16 @@
   <div class="graph-container" id="graph-container">
     <canvas id="graph" width="400" height="400"></canvas>
     
-    <!-- Przyciski nawigacyjne na wykresie -->
+    <!-- Przyciski nawigacyjne w prawym dolnym rogu -->
     <div class="graph-controls">
       <div class="graph-btn" id="btn-zoom-in" title="Przybliż">+</div>
       <div class="graph-btn" id="btn-zoom-out" title="Oddal">-</div>
       <div class="graph-btn" id="btn-center" title="Wyśrodkuj">⌖</div>
+    </div>
+
+    <!-- Przycisk wyjścia z pełnego ekranu (w prawym górnym rogu) -->
+    <div class="graph-exit-fs">
+      <div class="graph-btn" id="btn-exit-fs" title="Wyjdź z pełnego ekranu">✕</div>
     </div>
   </div>
 
@@ -300,24 +321,24 @@
 
     <div class="control-row">
       <span class="control-label">f(x) =</span>
-      <input type="text" class="input-func" id="fx-input" value="x^2">
+      <input type="text" class="input-func" id="fx-input" value="x+20">
     </div>
     
     <div id="vector-sliders" class="slider-container">
       <div class="control-row">
         <span class="control-label">Przes. X (p)</span>
         <div class="slider-wrapper">
-          <input type="range" id="p-slider" min="-10" max="10" step="0.5" value="2">
+          <input type="range" id="p-slider" min="-20" max="20" step="0.5" value="0">
         </div>
-        <div class="val-box" id="p-val">2</div>
+        <div class="val-box" id="p-val">0</div>
       </div>
 
       <div class="control-row">
         <span class="control-label">Przes. Y (q)</span>
         <div class="slider-wrapper">
-          <input type="range" id="q-slider" min="-10" max="10" step="0.5" value="-3">
+          <input type="range" id="q-slider" min="-20" max="20" step="0.5" value="0">
         </div>
-        <div class="val-box" id="q-val">-3</div>
+        <div class="val-box" id="q-val">0</div>
       </div>
     </div>
   </div>
@@ -341,6 +362,7 @@
     btnZoomIn: document.getElementById('btn-zoom-in'),
     btnZoomOut: document.getElementById('btn-zoom-out'),
     btnFullscreen: document.getElementById('btn-fullscreen'),
+    btnExitFs: document.getElementById('btn-exit-fs'),
     graphContainer: document.getElementById('graph-container')
   };
 
@@ -352,16 +374,14 @@
 
   let isDragging = false;
   let lastX = 0, lastY = 0;
+  let initialPinchDist = null;
+  let initialScale = 40;
 
   function resizeCanvasToDisplay() {
     const rect = els.graphContainer.getBoundingClientRect();
     if (canvas.width !== rect.width || canvas.height !== rect.height) {
       canvas.width = rect.width;
       canvas.height = rect.height;
-      if(view.offsetX === 200 && view.offsetY === 200) {
-        view.offsetX = canvas.width / 2;
-        view.offsetY = canvas.height / 2;
-      }
     }
   }
 
@@ -373,6 +393,52 @@
     } catch(e) {
       els.fx.classList.add('error');
       return null;
+    }
+  }
+
+  // 🔥 Usprawniony Auto-Zoom (działa dla x+20, x^2 itp.)
+  function autoScaleIfNeeded() {
+    resizeCanvasToDisplay();
+    const fStr = els.fx.value;
+    const mode = els.type.value;
+    const p = parseFloat(els.p.value);
+    const q = parseFloat(els.q.value);
+
+    let maxY = 0;
+    // Skanujemy wartości funkcji wzdłuż całej szerokości ekranu
+    for (let px = 0; px <= canvas.width; px += 10) {
+      let x = (px - view.offsetX) / view.scale;
+      let y = null;
+      try {
+        if (mode === 'vector') {
+          let f_val = evaluateMath(fStr, x - p);
+          if (f_val !== null) y = f_val + q;
+        } else if (mode === 'symX') {
+          let f_val = evaluateMath(fStr, x);
+          if (f_val !== null) y = -f_val;
+        } else if (mode === 'symY') {
+          y = evaluateMath(fStr, -x);
+        } else if (mode === 'sym00') {
+          let f_val = evaluateMath(fStr, -x);
+          if (f_val !== null) y = -f_val;
+        } else if (mode === 'absF') {
+          let f_val = evaluateMath(fStr, x);
+          if (f_val !== null) y = Math.abs(f_val);
+        } else if (mode === 'absX') {
+          y = evaluateMath(fStr, Math.abs(x));
+        }
+      } catch(e) {}
+
+      if (y !== null && !isNaN(y) && isFinite(y)) {
+        if (Math.abs(y) > maxY) maxY = Math.abs(y);
+      }
+    }
+
+    // Jeśli wykres wychodzi poza domyślny kadr, automatycznie dostosuj skalę
+    if (maxY > (canvas.height / 2) / view.scale * 0.8) {
+      let targetRange = Math.max(10, maxY * 1.3);
+      view.scale = (canvas.height / 2) / targetRange;
+      view.offsetY = canvas.height / 2; // Wycentruj pionowo
     }
   }
 
@@ -539,10 +605,12 @@
         els.formula.innerText = `g(x) = ${fStr.replace(/x/g, '|x|')}`; els.info.innerText = `Moduł z argumentu`;
       }
     }
+
+    autoScaleIfNeeded();
     drawGraph();
   }
 
-  // Funkcja zmiany zoomu za pomocą przycisków
+  // Funkcja zmiany zoomu przyciskami
   function zoomByFactor(factor) {
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
@@ -551,37 +619,73 @@
     view.offsetY = centerY - (centerY - view.offsetY) * factor;
     view.scale *= factor;
 
-    if(view.scale < 5) view.scale = 5;
-    if(view.scale > 500) view.scale = 500;
+    if(view.scale < 2) view.scale = 2;
+    if(view.scale > 1000) view.scale = 1000;
 
     drawGraph();
   }
 
-  // Obsługa dotyku / myszy do przesuwania wykresu
-  function getPos(e) {
-    if (e.touches) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    return { x: e.clientX, y: e.clientY };
+  // --- OBSŁUGA DOTYKU I MYSZY (PAN & PINCH TO ZOOM) ---
+  function getTouchDistance(touches) {
+    let dx = touches[0].clientX - touches[1].clientX;
+    let dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
   }
 
-  function startDrag(e) {
+  canvas.addEventListener('mousedown', (e) => {
     isDragging = true;
-    let pos = getPos(e);
-    lastX = pos.x; lastY = pos.y;
-  }
+    lastX = e.clientX; lastY = e.clientY;
+  });
 
-  function doDrag(e) {
+  canvas.addEventListener('mousemove', (e) => {
     if (!isDragging) return;
-    e.preventDefault();
-    let pos = getPos(e);
-    view.offsetX += (pos.x - lastX);
-    view.offsetY += (pos.y - lastY);
-    lastX = pos.x; lastY = pos.y;
+    view.offsetX += (e.clientX - lastX);
+    view.offsetY += (e.clientY - lastY);
+    lastX = e.clientX; lastY = e.clientY;
     drawGraph();
-  }
+  });
 
-  function endDrag() { isDragging = false; }
+  window.addEventListener('mouseup', () => { isDragging = false; });
 
-  function doZoom(e) {
+  // Dotyk (Pinch-to-zoom oraz przesuwanie jednym palcem)
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      isDragging = true;
+      lastX = e.touches[0].clientX;
+      lastY = e.touches[0].clientY;
+    } else if (e.touches.length === 2) {
+      isDragging = false;
+      initialPinchDist = getTouchDistance(e.touches);
+      initialScale = view.scale;
+    }
+  }, {passive: false});
+
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (isDragging && e.touches.length === 1) {
+      view.offsetX += (e.touches[0].clientX - lastX);
+      view.offsetY += (e.touches[0].clientY - lastY);
+      lastX = e.touches[0].clientX;
+      lastY = e.touches[0].clientY;
+      drawGraph();
+    } else if (e.touches.length === 2 && initialPinchDist !== null) {
+      let currentDist = getTouchDistance(e.touches);
+      let factor = currentDist / initialPinchDist;
+      
+      let newScale = initialScale * factor;
+      if (newScale >= 2 && newScale <= 1000) {
+        view.scale = newScale;
+        drawGraph();
+      }
+    }
+  }, {passive: false});
+
+  canvas.addEventListener('touchend', (e) => {
+    if (e.touches.length < 2) initialPinchDist = null;
+    if (e.touches.length === 0) isDragging = false;
+  });
+
+  canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
     const zoomIntensity = 0.1;
     const wheel = e.deltaY < 0 ? 1 : -1;
@@ -595,23 +699,13 @@
     view.offsetY = mouseY - (mouseY - view.offsetY) * zoomFactor;
     view.scale *= zoomFactor;
     
-    if(view.scale < 5) view.scale = 5;
-    if(view.scale > 500) view.scale = 500;
+    if(view.scale < 2) view.scale = 2;
+    if(view.scale > 1000) view.scale = 1000;
 
     drawGraph();
-  }
+  }, {passive: false});
 
-  canvas.addEventListener('mousedown', startDrag);
-  canvas.addEventListener('mousemove', doDrag);
-  window.addEventListener('mouseup', endDrag);
-
-  canvas.addEventListener('touchstart', startDrag, {passive: false});
-  canvas.addEventListener('touchmove', doDrag, {passive: false});
-  window.addEventListener('touchend', endDrag);
-
-  canvas.addEventListener('wheel', doZoom, {passive: false});
-
-  // Obsługa przycisków interfejsu
+  // Obsługa przycisków UI
   els.btnZoomIn.addEventListener('click', (e) => { e.stopPropagation(); zoomByFactor(1.35); });
   els.btnZoomOut.addEventListener('click', (e) => { e.stopPropagation(); zoomByFactor(1 / 1.35); });
 
@@ -620,17 +714,21 @@
     view.offsetX = canvas.width / 2;
     view.offsetY = canvas.height / 2;
     view.scale = 40;
-    drawGraph();
+    updateUI();
   });
 
-  els.btnFullscreen.addEventListener('click', () => {
+  // Włączanie / Wyłączanie pełnego ekranu
+  function toggleFullscreen() {
     document.body.classList.toggle('fullscreen-mode');
     setTimeout(() => {
       view.offsetX = canvas.width / 2;
       view.offsetY = canvas.height / 2;
       drawGraph();
     }, 50);
-  });
+  }
+
+  els.btnFullscreen.addEventListener('click', toggleFullscreen);
+  els.btnExitFs.addEventListener('click', toggleFullscreen);
 
   [els.fx, els.type, els.p, els.q].forEach(el => el.addEventListener('input', updateUI));
   els.type.addEventListener('change', updateUI); 

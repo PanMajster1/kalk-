@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -31,7 +30,6 @@
       justify-content: center;
       min-height: 100vh;
       overflow-x: hidden;
-      /* Pozwól na normalne scrollowanie całej strony */
       overflow-y: auto; 
     }
     
@@ -92,7 +90,6 @@
       border-radius: 12px;
       cursor: grab;
       display: block;
-      /* Blokujemy domyślne gesty tylko na samym canvasie do rysowania/przesuwania wykresu */
       touch-action: none; 
     }
     canvas:active { cursor: grabbing; }
@@ -183,7 +180,7 @@
       background-color: #2a2a2a; padding: 6px 0; border-radius: 10px; width: 40px; text-align: center; font-size: 13px; font-weight: 500;
     }
 
-    /* Własności funkcji (Analiza) */
+    /* Pełne własności funkcji */
     .properties-box {
       background: #15171e;
       border: 1px solid #2a2d3a;
@@ -196,19 +193,8 @@
     }
     .prop-title { font-weight: 600; color: var(--accent-blue); margin-bottom: 2px; font-size: 13px; }
     .prop-item { display: flex; justify-content: space-between; color: #ccc; }
-    .prop-val { font-weight: 600; color: white; }
+    .prop-val { font-weight: 600; color: white; text-align: right; max-width: 220px; word-break: break-all; }
 
-    /* Tryb Szkicownika */
-    .sketch-task {
-      font-size: 13px;
-      font-weight: 600;
-      color: #fbbf24;
-      background: rgba(251, 191, 36, 0.1);
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid rgba(251, 191, 36, 0.3);
-      text-align: center;
-    }
     .action-btn {
       background: var(--accent-blue);
       color: white;
@@ -264,7 +250,7 @@
     </div>
   </div>
 
-  <!-- PANEL KALKULATORA (Własności) -->
+  <!-- PANEL KALKULATORA -->
   <div class="panel" id="panel-calc">
     <div class="control-row">
       <span class="control-label">Tryb</span>
@@ -301,33 +287,33 @@
       </div>
     </div>
 
-    <!-- Automatyczne własności funkcji -->
+    <!-- Pełne własności -->
     <div class="properties-box">
-      <div class="prop-title">📊 Odczyt własności z wykresu</div>
-      <div class="prop-item"><span>Dziedzina:</span> <span class="prop-val" id="prop-domain">D = ℝ</span></div>
-      <div class="prop-item"><span>Zbiór wartości:</span> <span class="prop-val" id="prop-range">ZW = ℝ</span></div>
-      <div class="prop-item"><span>Miejsce zerowe (x₀):</span> <span class="prop-val" id="prop-zero">-</span></div>
-      <div class="prop-item"><span>Przecięcie OY (0, y):</span> <span class="prop-val" id="prop-oy">-</span></div>
-      <div class="prop-item"><span>Monotoniczność:</span> <span class="prop-val" id="prop-mono">Rosnąca</span></div>
+      <div class="prop-title">📊 Pełne własności funkcji</div>
+      <div class="prop-item"><span>Dziedzina (D):</span> <span class="prop-val" id="prop-domain">D = ℝ</span></div>
+      <div class="prop-item"><span>Zbiór wartości (ZW):</span> <span class="prop-val" id="prop-range">ZW = ℝ</span></div>
+      <div class="prop-item"><span>Miejsca zerowe (x₀):</span> <span class="prop-val" id="prop-zero">-</span></div>
+      <div class="prop-item"><span>Przecięcie z OY (0, y):</span> <span class="prop-val" id="prop-oy">-</span></div>
+      <div class="prop-item"><span>Monotoniczność:</span> <span class="prop-val" id="prop-mono">-</span></div>
+      <div class="prop-item"><span>Ekstremum / Wartość:</span> <span class="prop-val" id="prop-extrema">-</span></div>
     </div>
   </div>
 
-  <!-- PANEL SZKICOWNIKA (Sprawdzanie zadania) -->
+  <!-- PANEL SZKICOWNIKA -->
   <div class="panel" id="panel-sketch" style="display: none;">
-    <div class="sketch-task" id="sketch-task-text">Zadanie: Naszkicuj funkcję g(x) dla f(x) = x i wektora [2, 1]</div>
-    
     <div class="control-row">
-      <span class="control-label">Miejsce zerowe</span>
-      <input type="text" class="input-field" id="sketch-zero" placeholder="np. -1 lub brak">
-    </div>
-    <div class="control-row">
-      <span class="control-label">Punkt OY</span>
-      <input type="text" class="input-field" id="sketch-oy" placeholder="np. 3">
+      <span class="control-label">Wpisz f(x) =</span>
+      <input type="text" class="input-field" id="sketch-fx-input" value="x^2 - 4">
     </div>
 
-    <button class="action-btn" onclick="checkSketchAnswer()">Sprawdź odpowiedź</button>
-    <div class="sketch-feedback" id="sketch-feedback"></div>
-    <button class="action-btn" style="background: #333; margin-top: -4px;" onclick="generateNewSketchTask()">Nowe zadanie</button>
+    <div class="properties-box">
+      <div class="prop-title">📝 Automatyczny odczyt z Twojego wykresu</div>
+      <div class="prop-item"><span>Dziedzina (D):</span> <span class="prop-val" id="s-domain">D = ℝ</span></div>
+      <div class="prop-item"><span>Zbiór wartości (ZW):</span> <span class="prop-val" id="s-range">-</span></div>
+      <div class="prop-item"><span>Miejsca zerowe (x₀):</span> <span class="prop-val" id="s-zero">-</span></div>
+      <div class="prop-item"><span>Przecięcie z OY:</span> <span class="prop-val" id="s-oy">-</span></div>
+      <div class="prop-item"><span>Monotoniczność:</span> <span class="prop-val" id="s-mono">-</span></div>
+    </div>
   </div>
 </div>
 
@@ -352,21 +338,27 @@
     panelSketch: document.getElementById('panel-sketch'),
     modeCalc: document.getElementById('mode-calc'),
     modeSketch: document.getElementById('mode-sketch'),
+    
+    // Własności kalkulatora
     propDomain: document.getElementById('prop-domain'),
     propRange: document.getElementById('prop-range'),
     propZero: document.getElementById('prop-zero'),
     propOy: document.getElementById('prop-oy'),
     propMono: document.getElementById('prop-mono'),
-    sketchTaskText: document.getElementById('sketch-task-text'),
-    sketchZero: document.getElementById('sketch-zero'),
-    sketchOy: document.getElementById('sketch-oy'),
-    sketchFeedback: document.getElementById('sketch-feedback')
+    propExtrema: document.getElementById('prop-extrema'),
+    
+    // Własności szkicownika
+    sketchFx: document.getElementById('sketch-fx-input'),
+    sDomain: document.getElementById('s-domain'),
+    sRange: document.getElementById('s-range'),
+    sZero: document.getElementById('s-zero'),
+    sOy: document.getElementById('s-oy'),
+    sMono: document.getElementById('s-mono')
   };
 
   let view = { offsetX: 0, offsetY: 0, scale: 30 };
   let isDragging = false, lastX = 0, lastY = 0, initialPinchDist = null, initialScale = 30;
   let currentAppMode = 'calc';
-  let currentSketchTask = null;
 
   function switchMode(mode) {
     currentAppMode = mode;
@@ -381,7 +373,8 @@
       els.modeCalc.classList.remove('active');
       els.panelSketch.style.display = 'flex';
       els.panelCalc.style.display = 'none';
-      generateNewSketchTask();
+      updateSketchProperties();
+      drawGraph();
     }
   }
 
@@ -401,10 +394,8 @@
     try {
       let sanitizedExpr = expression.replace(/,/g, '.');
       let res = math.evaluate(sanitizedExpr, { x: xVal });
-      els.fx.classList.remove('error');
       return res;
     } catch(e) {
-      els.fx.classList.add('error');
       return null;
     }
   }
@@ -437,37 +428,106 @@
     return null;
   }
 
-  function analyzeProperties() {
-    // Czyste, estetyczne wyświetlanie dziedziny i zbioru wartości
-    els.propDomain.innerText = "D = ℝ";
-    els.propRange.innerText = "ZW = ℝ";
+  // Uniwersalna funkcja licząca pełne własności dla dowolnego evaluatora Y
+  function computePropertiesFor(evaluator) {
+    let domain = "D = ℝ";
+    
+    // Sprawdzenie dzielenia przez zero dla prostych ułamków
+    let testZeroDiv = evaluator(0);
+    if (testZeroDiv === null || isNaN(testZeroDiv)) {
+      domain = "D = ℝ \\ {0}";
+    }
 
-    let oyVal = evaluateTransformed(0);
-    els.propOy.innerText = (oyVal !== null && !isNaN(oyVal) && isFinite(oyVal)) ? oyVal.toFixed(1).replace(/\.?0+$/, '') : "brak";
-
-    let zeroVal = null;
-    for (let x = -50; x <= 50; x += 0.1) {
-      let y1 = evaluateTransformed(x);
-      let y2 = evaluateTransformed(x + 0.1);
-      if (y1 !== null && y2 !== null && Math.sign(y1) !== Math.sign(y2)) {
-        zeroVal = x;
-        break;
-      } else if (y1 !== null && Math.abs(y1) < 0.01) {
-        zeroVal = x;
-        break;
+    // Zbieramy wartości Y w przedziale od -30 do 30
+    let yValues = [];
+    let zeros = [];
+    
+    for (let x = -30; x <= 30; x += 0.1) {
+      let y = evaluator(x);
+      if (y !== null && !isNaN(y) && isFinite(y)) {
+        yValues.push(y);
+      }
+      
+      // Szukanie miejsc zerowych
+      let yNext = evaluator(x + 0.1);
+      if (y !== null && yNext !== null && Math.sign(y) !== Math.sign(yNext)) {
+        zeros.push(x.toFixed(1).replace(/\.?0+$/, ''));
+      } else if (y !== null && Math.abs(y) < 0.02) {
+        if (!zeros.includes(x.toFixed(1).replace(/\.?0+$/, ''))) {
+          zeros.push(x.toFixed(1).replace(/\.?0+$/, ''));
+        }
       }
     }
-    els.propZero.innerText = zeroVal !== null ? zeroVal.toFixed(1).replace(/\.?0+$/, '') : "brak";
 
-    let y_test1 = evaluateTransformed(0);
-    let y_test2 = evaluateTransformed(1);
-    if (y_test1 !== null && y_test2 !== null) {
-      if (y_test2 > y_test1) els.propMono.innerText = "Rosnąca";
-      else if (y_test2 < y_test1) els.propMono.innerText = "Malejąca";
-      else els.propMono.innerText = "Stała";
-    } else {
-      els.propMono.innerText = "Zmienna";
+    let minX = yValues.length ? Math.min(...yValues) : 0;
+    let maxX = yValues.length ? Math.max(...yValues) : 0;
+
+    let rangeStr = "ZW = ℝ";
+    if (domain === "D = ℝ" && Math.abs(maxX - minX) > 0.1) {
+      // Sprawdzamy czy to funkcja kwadratowa / ograniczona (np. parabola)
+      let sampleNeg = evaluator(-10);
+      let samplePos = evaluator(10);
+      let sampleMid = evaluator(0);
+      if (sampleNeg !== null && samplePos !== null && sampleMid !== null) {
+        if (sampleNeg > sampleMid && samplePos > sampleMid) {
+          rangeStr = `[${sampleMid.toFixed(1).replace(/\.?0+$/, '')}, ∞)`;
+        } else if (sampleNeg < sampleMid && samplePos < sampleMid) {
+          rangeStr = `(-∞, ${sampleMid.toFixed(1).replace(/\.?0+$/, '')}]`;
+        }
+      }
     }
+
+    // Punkt OY
+    let oyVal = evaluator(0);
+    let oyStr = (oyVal !== null && !isNaN(oyVal) && isFinite(oyVal)) ? `(0, ${oyVal.toFixed(1).replace(/\.?0+$/, '')})` : "brak";
+
+    // Monotoniczność
+    let y1 = evaluator(-2);
+    let y2 = evaluator(2);
+    let monoStr = "Stała / Zmienna";
+    if (y1 !== null && y2 !== null) {
+      if (y2 > y1) monoStr = "Rosnąca w ℝ";
+      else if (y2 < y1) monoStr = "Malejąca w ℝ";
+    }
+
+    // Ekstremum
+    let extremaStr = "Brak ekstremów";
+    if (rangeStr.startsWith("[")) {
+      let val = rangeStr.match(/\[(.*?),\s/)[1];
+      extremaStr = `Min = ${val}`;
+    } else if (rangeStr.endsWith("]")) {
+      let val = rangeStr.match(/,\s(.*?)]/)[1];
+      extremaStr = `Max = ${val}`;
+    }
+
+    return {
+      domain,
+      range: rangeStr,
+      zeros: zeros.length ? zeros.join(", ") : "Brak miejsc zerowych",
+      oy: oyStr,
+      mono: monoStr,
+      extrema: extremaStr
+    };
+  }
+
+  function analyzeProperties() {
+    let props = computePropertiesFor(evaluateTransformed);
+    els.propDomain.innerText = props.domain;
+    els.propRange.innerText = props.range;
+    els.propZero.innerText = props.zeros;
+    els.propOy.innerText = props.oy;
+    els.propMono.innerText = props.mono;
+    els.propExtrema.innerText = props.extrema;
+  }
+
+  function updateSketchProperties() {
+    let sketchExpr = els.sketchFx.value;
+    let props = computePropertiesFor((x) => evaluateMath(sketchExpr, x));
+    els.sDomain.innerText = props.domain;
+    els.sRange.innerText = props.range;
+    els.sZero.innerText = props.zeros;
+    els.sOy.innerText = props.oy;
+    els.sMono.innerText = props.mono;
   }
 
   function drawGrid() {
@@ -520,12 +580,12 @@
 
   function drawGraph() {
     drawGrid();
-    const fStr = els.fx.value;
 
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
 
     if (currentAppMode === 'calc') {
+      const fStr = els.fx.value;
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
       ctx.setLineDash([4, 4]);
       ctx.lineWidth = 1.5;
@@ -551,7 +611,7 @@
     
     for(let px = 0; px <= canvas.width; px += 2) {
       let x = (px - view.offsetX) / view.scale;
-      let y = currentAppMode === 'calc' ? evaluateTransformed(x) : evaluateMath(currentSketchTask.formula, x);
+      let y = currentAppMode === 'calc' ? evaluateTransformed(x) : evaluateMath(els.sketchFx.value, x);
 
       if(y !== null && !isNaN(y) && isFinite(y)) {
         let py = view.offsetY - y * view.scale;
@@ -571,38 +631,6 @@
       analyzeProperties();
     }
     drawGraph();
-  }
-
-  function generateNewSketchTask() {
-    const tasks = [
-      { text: "Naszkicuj wykres funkcji g(x) = x - 2", formula: "x - 2", zero: "2", oy: "-2" },
-      { text: "Naszkicuj wykres funkcji g(x) = x + 3", formula: "x + 3", zero: "-3", oy: "3" },
-      { text: "Naszkicuj wykres funkcji g(x) = -x + 4", formula: "-x + 4", zero: "4", oy: "4" },
-      { text: "Naszkicuj wykres funkcji g(x) = 2x - 4", formula: "2*x - 4", zero: "2", oy: "-4" }
-    ];
-    currentSketchTask = tasks[Math.floor(Math.random() * tasks.length)];
-    els.sketchTaskText.innerText = "Zadanie: " + currentSketchTask.text;
-    els.sketchZero.value = "";
-    els.sketchOy.value = "";
-    els.sketchFeedback.style.display = "none";
-    drawGraph();
-  }
-
-  function checkSketchAnswer() {
-    const userZero = els.sketchZero.value.trim().replace(',', '.');
-    const userOy = els.sketchOy.value.trim().replace(',', '.');
-
-    let correctZero = currentSketchTask.zero;
-    let correctOy = currentSketchTask.oy;
-
-    if (userZero === correctZero && userOy === correctOy) {
-      els.sketchFeedback.innerText = "🎉 Dobra robota! Własności odczytane poprawnie!";
-      els.sketchFeedback.className = "sketch-feedback success";
-    } else {
-      els.sketchFeedback.innerText = `❌ Błąd. Prawidłowe miejsce zerowe: ${correctZero}, punkt OY: ${correctOy}`;
-      els.sketchFeedback.className = "sketch-feedback error";
-    }
-    els.sketchFeedback.style.display = "block";
   }
 
   function zoomByFactor(factor) {
@@ -645,6 +673,13 @@
 
   [els.fx, els.type, els.p, els.q].forEach(el => el.addEventListener('input', updateUI));
   els.type.addEventListener('change', updateUI); 
+  
+  els.sketchFx.addEventListener('input', () => { 
+    if (currentAppMode === 'sketch') {
+      updateSketchProperties();
+      drawGraph();
+    }
+  });
 
   window.addEventListener('resize', drawGraph);
 

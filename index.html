@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Kalkulator Przekształceń Funkcji PRO</title>
+  <title>Kalkulator i Szkicownik Funkcji PRO</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
   <style>
     :root {
@@ -15,6 +15,7 @@
       --text-main: #ffffff;
       --text-muted: #888888;
       --accent-blue: #3b82f6;
+      --accent-green: #22c55e;
       --accent-red: #ef4444;
     }
     
@@ -37,15 +38,40 @@
       padding: 15px;
       display: flex;
       flex-direction: column;
-      transition: all 0.3s ease;
+      gap: 15px;
+      padding-bottom: 30px;
     }
     
     .header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 15px;
       font-size: 18px;
+    }
+
+    /* Przełącznik trybów (Kalkulator / Szkicownik) */
+    .mode-switch {
+      display: flex;
+      background: #222;
+      border-radius: 10px;
+      padding: 3px;
+      gap: 3px;
+    }
+    .mode-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+    }
+    .mode-btn.active {
+      background: var(--accent-blue);
+      color: white;
     }
     
     .graph-container {
@@ -53,10 +79,8 @@
       aspect-ratio: 1;
       background-color: var(--bg-graph);
       border-radius: 12px;
-      margin-bottom: 15px;
       position: relative;
       overflow: hidden;
-      transition: all 0.3s ease;
     }
     
     canvas {
@@ -66,10 +90,7 @@
       cursor: grab;
       display: block;
     }
-    
-    canvas:active {
-      cursor: grabbing;
-    }
+    canvas:active { cursor: grabbing; }
 
     .graph-controls {
       position: absolute;
@@ -88,10 +109,7 @@
       gap: 6px;
       z-index: 10;
     }
-
-    body.fullscreen-mode .graph-exit-fs {
-      display: flex;
-    }
+    body.fullscreen-mode .graph-exit-fs { display: flex; }
 
     .graph-btn {
       background: rgba(42, 45, 58, 0.85);
@@ -109,45 +127,15 @@
       backdrop-filter: blur(4px);
       user-select: none;
     }
-
-    .graph-btn:active {
-      background: rgba(59, 130, 246, 0.8);
-    }
+    .graph-btn:active { background: rgba(59, 130, 246, 0.8); }
     
-    .info-section {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 20px;
-      padding: 0 5px;
-    }
-    
-    .info-block {
-      display: flex;
-      flex-direction: column;
-      width: 50%;
-    }
-    
-    .info-label {
-      font-size: 10px;
-      font-weight: 700;
-      color: var(--text-muted);
-      margin-bottom: 4px;
-      text-transform: uppercase;
-    }
-    
-    .info-value {
-      font-size: 13px;
-      font-weight: 600;
-      word-wrap: break-word;
-    }
-    
-    .controls-panel {
+    .panel {
       background-color: var(--bg-panel);
       border-radius: 20px;
       padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
       touch-action: auto;
     }
     
@@ -158,13 +146,13 @@
     }
     
     .control-label {
-      width: 85px;
+      width: 90px;
       font-size: 13px;
       font-weight: 500;
       color: var(--text-muted);
     }
     
-    .input-func, .select-func {
+    .input-field, .select-func {
       background: #2a2a2a;
       border: 1px solid #333;
       color: white;
@@ -174,97 +162,76 @@
       outline: none;
       flex-grow: 1;
       margin-left: 10px;
-      transition: border-color 0.2s;
     }
-
-    .input-func.error {
-      border-color: var(--accent-red);
-      color: var(--accent-red);
-    }
-
-    .select-func {
-      cursor: pointer;
-      appearance: none;
-    }
+    .input-field.error { border-color: var(--accent-red); color: var(--accent-red); }
+    .select-func { cursor: pointer; appearance: none; }
     
-    .slider-container {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-
-    .slider-wrapper {
-      flex-grow: 1;
-      margin: 0 10px;
-      display: flex;
-      align-items: center;
-      touch-action: auto;
-    }
+    .slider-container { display: flex; flex-direction: column; gap: 12px; }
+    .slider-wrapper { flex-grow: 1; margin: 0 10px; display: flex; align-items: center; touch-action: auto; }
     
-    input[type=range] {
-      -webkit-appearance: none;
-      width: 100%;
-      background: transparent;
-    }
-    
+    input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
     input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      height: 18px;
-      width: 6px;
-      border-radius: 2px;
-      background: #ffffff;
-      cursor: pointer;
-      margin-top: -8px;
+      -webkit-appearance: none; height: 18px; width: 6px; border-radius: 2px; background: #ffffff; cursor: pointer; margin-top: -8px;
     }
-    
-    input[type=range]::-webkit-slider-runnable-track {
-      width: 100%;
-      height: 2px;
-      background: #555;
-      border-radius: 1px;
-    }
+    input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 2px; background: #555; border-radius: 1px; }
     
     .val-box {
-      background-color: #2a2a2a;
-      padding: 6px 0;
-      border-radius: 10px;
-      width: 40px;
-      text-align: center;
-      font-size: 13px;
-      font-weight: 500;
+      background-color: #2a2a2a; padding: 6px 0; border-radius: 10px; width: 40px; text-align: center; font-size: 13px; font-weight: 500;
     }
 
-    body.fullscreen-mode .controls-panel,
-    body.fullscreen-mode .info-section,
-    body.fullscreen-mode .header {
-      display: none !important;
-    }
-
-    body.fullscreen-mode {
-      background-color: var(--bg-graph);
-      padding: 0;
-      margin: 0;
-      height: 100vh;
+    /* Własności funkcji (Analiza) */
+    .properties-box {
+      background: #15171e;
+      border: 1px solid #2a2d3a;
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 12px;
       display: flex;
-      align-items: center;
-      justify-content: center;
+      flex-direction: column;
+      gap: 6px;
     }
+    .prop-title { font-weight: 600; color: var(--accent-blue); margin-bottom: 2px; font-size: 13px; }
+    .prop-item { display: flex; justify-content: space-between; color: #ccc; }
+    .prop-val { font-weight: 600; color: white; }
 
-    body.fullscreen-mode .app-container {
-      max-width: 100% !important;
-      height: 100vh;
-      padding: 0;
-      margin: 0;
-      justify-content: center;
+    /* Tryb Szkicownika */
+    .sketch-task {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fbbf24;
+      background: rgba(251, 191, 36, 0.1);
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      text-align: center;
     }
+    .action-btn {
+      background: var(--accent-blue);
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+    }
+    .action-btn:active { opacity: 0.8; }
+    .sketch-feedback {
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      padding: 8px;
+      border-radius: 8px;
+      display: none;
+    }
+    .sketch-feedback.success { background: rgba(34, 197, 94, 0.2); color: var(--accent-green); border: 1px solid var(--accent-green); }
+    .sketch-feedback.error { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid var(--accent-red); }
 
-    body.fullscreen-mode .graph-container {
-      width: 100vw;
-      height: 100vh;
-      aspect-ratio: unset;
-      border-radius: 0;
-      margin: 0;
-    }
+    body.fullscreen-mode .panel,
+    body.fullscreen-mode .header { display: none !important; }
+    body.fullscreen-mode { background-color: var(--bg-graph); padding: 0; height: 100vh; display: flex; align-items: center; justify-content: center; }
+    body.fullscreen-mode .app-container { max-width: 100% !important; height: 100vh; padding: 0; margin: 0; justify-content: center; }
+    body.fullscreen-mode .graph-container { width: 100vw; height: 100vh; aspect-ratio: unset; border-radius: 0; margin: 0; }
   </style>
 </head>
 <body>
@@ -272,7 +239,10 @@
 <div class="app-container" id="app-container">
   <div class="header">
     <div style="cursor:pointer">←</div>
-    <div style="font-weight:600; font-size:15px;">Wykresy WATCH</div>
+    <div class="mode-switch">
+      <button class="mode-btn active" id="mode-calc" onclick="switchMode('calc')">Kalkulator</button>
+      <button class="mode-btn" id="mode-sketch" onclick="switchMode('sketch')">Szkicownik</button>
+    </div>
     <div style="cursor:pointer; font-size:18px;" id="btn-fullscreen" title="Pełny ekran">⛶</div>
   </div>
 
@@ -290,18 +260,8 @@
     </div>
   </div>
 
-  <div class="info-section">
-    <div class="info-block">
-      <span class="info-label">Wzór g(x)</span>
-      <span class="info-value" id="gx-formula">g(x) = ...</span>
-    </div>
-    <div class="info-block" style="border-left: 1px solid #333; padding-left: 12px;">
-      <span class="info-label">Operacja</span>
-      <span class="info-value" id="vector-info">Wektor</span>
-    </div>
-  </div>
-
-  <div class="controls-panel">
+  <!-- PANEL KALKULATORA (Własności) -->
+  <div class="panel" id="panel-calc">
     <div class="control-row">
       <span class="control-label">Tryb</span>
       <select id="transform-type" class="select-func">
@@ -316,7 +276,7 @@
 
     <div class="control-row">
       <span class="control-label">f(x) =</span>
-      <input type="text" class="input-func" id="fx-input" value="x + 2">
+      <input type="text" class="input-field" id="fx-input" value="x + 2">
     </div>
     
     <div id="vector-sliders" class="slider-container">
@@ -336,6 +296,34 @@
         <div class="val-box" id="q-val">0</div>
       </div>
     </div>
+
+    <!-- Automatyczne własności funkcji -->
+    <div class="properties-box">
+      <div class="prop-title">📊 Odczyt własności z wykresu</div>
+      <div class="prop-item"><span>Dziedzina:</span> <span class="prop-val" id="prop-domain">R</span></div>
+      <div class="prop-item"><span>Zbiór wartości:</span> <span class="prop-val" id="prop-range">R</span></div>
+      <div class="prop-item"><span>Miejsce zerowe ($x_0$):</span> <span class="prop-val" id="prop-zero">-</span></div>
+      <div class="prop-item"><span>Przecięcie OY ($0, y$):</span> <span class="prop-val" id="prop-oy">-</span></div>
+      <div class="prop-item"><span>Monotoniczność:</span> <span class="prop-val" id="prop-mono">Rosnąca</span></div>
+    </div>
+  </div>
+
+  <!-- PANEL SZKICOWNIKA (Sprawdzanie zadania) -->
+  <div class="panel" id="panel-sketch" style="display: none;">
+    <div class="sketch-task" id="sketch-task-text">Zadanie: Naszkicuj funkcję g(x) dla f(x) = x i wektora [2, 1]</div>
+    
+    <div class="control-row">
+      <span class="control-label">Miejsce zerowe</span>
+      <input type="text" class="input-field" id="sketch-zero" placeholder="np. -1 lub brak">
+    </div>
+    <div class="control-row">
+      <span class="control-label">Punkt OY</span>
+      <input type="text" class="input-field" id="sketch-oy" placeholder="np. 3">
+    </div>
+
+    <button class="action-btn" onclick="checkSketchAnswer()">Sprawdź odpowiedź</button>
+    <div class="sketch-feedback" id="sketch-feedback"></div>
+    <button class="action-btn" style="background: #333; margin-top: -4px;" onclick="generateNewSketchTask()">Nowe zadanie</button>
   </div>
 </div>
 
@@ -350,27 +338,48 @@
     q: document.getElementById('q-slider'),
     pVal: document.getElementById('p-val'),
     qVal: document.getElementById('q-val'),
-    formula: document.getElementById('gx-formula'),
-    info: document.getElementById('vector-info'),
-    slidersDiv: document.getElementById('vector-sliders'),
     btnCenter: document.getElementById('btn-center'),
     btnZoomIn: document.getElementById('btn-zoom-in'),
     btnZoomOut: document.getElementById('btn-zoom-out'),
     btnFullscreen: document.getElementById('btn-fullscreen'),
     btnExitFs: document.getElementById('btn-exit-fs'),
-    graphContainer: document.getElementById('graph-container')
+    graphContainer: document.getElementById('graph-container'),
+    panelCalc: document.getElementById('panel-calc'),
+    panelSketch: document.getElementById('panel-sketch'),
+    modeCalc: document.getElementById('mode-calc'),
+    modeSketch: document.getElementById('mode-sketch'),
+    propDomain: document.getElementById('prop-domain'),
+    propRange: document.getElementById('prop-range'),
+    propZero: document.getElementById('prop-zero'),
+    propOy: document.getElementById('prop-oy'),
+    propMono: document.getElementById('prop-mono'),
+    sketchTaskText: document.getElementById('sketch-task-text'),
+    sketchZero: document.getElementById('sketch-zero'),
+    sketchOy: document.getElementById('sketch-oy'),
+    sketchFeedback: document.getElementById('sketch-feedback')
   };
 
-  let view = {
-    offsetX: 0,
-    offsetY: 0,
-    scale: 30 // 1 kratka = 30 pikseli
-  };
+  let view = { offsetX: 0, offsetY: 0, scale: 30 };
+  let isDragging = false, lastX = 0, lastY = 0, initialPinchDist = null, initialScale = 30;
+  let currentAppMode = 'calc';
+  let currentSketchTask = null;
 
-  let isDragging = false;
-  let lastX = 0, lastY = 0;
-  let initialPinchDist = null;
-  let initialScale = 30;
+  function switchMode(mode) {
+    currentAppMode = mode;
+    if (mode === 'calc') {
+      els.modeCalc.classList.add('active');
+      els.modeSketch.classList.remove('active');
+      els.panelCalc.style.display = 'flex';
+      els.panelSketch.style.display = 'none';
+      updateUI();
+    } else {
+      els.modeSketch.classList.add('active');
+      els.modeCalc.classList.remove('active');
+      els.panelSketch.style.display = 'flex';
+      els.panelCalc.style.display = 'none';
+      generateNewSketchTask();
+    }
+  }
 
   function resizeCanvasToDisplay() {
     const rect = els.graphContainer.getBoundingClientRect();
@@ -396,10 +405,77 @@
     }
   }
 
+  // Obliczanie wartości g(x) dla danego x
+  function evaluateTransformed(x) {
+    const fStr = els.fx.value;
+    const mode = els.type.value;
+    const p = parseFloat(els.p.value);
+    const q = parseFloat(els.q.value);
+
+    try {
+      if (mode === 'vector') {
+        let f_val = evaluateMath(fStr, x - p);
+        return f_val !== null ? f_val + q : null;
+      } else if (mode === 'symX') {
+        let f_val = evaluateMath(fStr, x);
+        return f_val !== null ? -f_val : null;
+      } else if (mode === 'symY') {
+        return evaluateMath(fStr, -x);
+      } else if (mode === 'sym00') {
+        let f_val = evaluateMath(fStr, -x);
+        return f_val !== null ? -f_val : null;
+      } else if (mode === 'absF') {
+        let f_val = evaluateMath(fStr, x);
+        return f_val !== null ? Math.abs(f_val) : null;
+      } else if (mode === 'absX') {
+        return evaluateMath(fStr, Math.abs(x));
+      }
+    } catch(e) {}
+    return null;
+  }
+
+  // Analiza własności funkcji i wypisywanie w panelu
+  function analyzeProperties() {
+    const fStr = els.fx.value;
+    
+    // Dziedzina i Zbiór wartości (ogólne dla większości szkół)
+    els.propDomain.innerText = "x ∈ R";
+    els.propRange.innerText = "y ∈ R";
+
+    // Przecięcie z OY (dla x = 0)
+    let oyVal = evaluateTransformed(0);
+    els.propOy.innerText = (oyVal !== null && !isNaN(oyVal) && isFinite(oyVal)) ? oyVal.toFixed(2).replace(/\.?0+$/, '') : "brak";
+
+    // Miejsce zerowe (szukamy numerycznie przechodzenia przez zero)
+    let zeroVal = null;
+    for (let x = -50; x <= 50; x += 0.1) {
+      let y1 = evaluateTransformed(x);
+      let y2 = evaluateTransformed(x + 0.1);
+      if (y1 !== null && y2 !== null && Math.sign(y1) !== Math.sign(y2)) {
+        zeroVal = x;
+        break;
+      } else if (y1 !== null && Math.abs(y1) < 0.01) {
+        zeroVal = x;
+        break;
+      }
+    }
+    els.propZero.innerText = zeroVal !== null ? zeroVal.toFixed(1).replace(/\.?0+$/, '') : "brak / poza kadrem";
+
+    // Monotoniczność (testujemy dla x = 0 i x = 1)
+    let y_test1 = evaluateTransformed(0);
+    let y_test2 = evaluateTransformed(1);
+    if (y_test1 !== null && y_test2 !== null) {
+      if (y_test2 > y_test1) els.propMono.innerText = "Rosnąca";
+      else if (y_test2 < y_test1) els.propMono.innerText = "Malejąca";
+      else els.propMono.innerText = "Stała";
+    } else {
+      els.propMono.innerText = "Nieliniowa / Zmienna";
+    }
+  }
+
   function drawGrid() {
     resizeCanvasToDisplay();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
     const step = 1; 
     
     ctx.strokeStyle = '#2a2d3a';
@@ -430,61 +506,48 @@
       ctx.fillStyle = '#aaaaaa';
       ctx.font = '10px system-ui';
       
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
       for(let i = startX; i <= endX; i += step) {
-        if (i !== 0) {
-          let px = view.offsetX + i * view.scale;
-          let py = Math.min(Math.max(view.offsetY + 4, 5), canvas.height - 15);
-          ctx.fillText(i, px, py);
-        }
+        if (i !== 0) ctx.fillText(i, view.offsetX + i * view.scale, Math.min(Math.max(view.offsetY + 4, 5), canvas.height - 15));
       }
       
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
       for(let i = startY; i <= endY; i += step) {
-        if (i !== 0) {
-          let py = view.offsetY - i * view.scale;
-          let px = Math.min(Math.max(view.offsetX - 6, 15), canvas.width - 5);
-          ctx.fillText(i, px, py);
-        }
+        if (i !== 0) ctx.fillText(i, Math.min(Math.max(view.offsetX - 6, 15), canvas.width - 5), view.offsetY - i * view.scale);
       }
       
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'top';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'top';
       ctx.fillText('0', view.offsetX - 4, view.offsetY + 4);
     }
   }
 
   function drawGraph() {
     drawGrid();
-    
     const fStr = els.fx.value;
-    const mode = els.type.value;
-    const p = parseFloat(els.p.value);
-    const q = parseFloat(els.q.value);
 
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
 
-    // 1. f(x)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-    ctx.setLineDash([4, 4]);
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    let firstPointF = true;
-    for(let px = 0; px <= canvas.width; px += 2) {
-      let x = (px - view.offsetX) / view.scale;
-      let y = evaluateMath(fStr, x);
-      if(y !== null && !isNaN(y) && isFinite(y)) {
-        let py = view.offsetY - y * view.scale;
-        if (firstPointF || py < -5000 || py > 5000) { ctx.moveTo(px, py); firstPointF = false; } 
-        else ctx.lineTo(px, py);
-      } else { firstPointF = true; }
+    // 1. Funkcja bazowa f(x) (jeśli jesteśmy w trybie kalkulatora)
+    if (currentAppMode === 'calc') {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      let firstPointF = true;
+      for(let px = 0; px <= canvas.width; px += 2) {
+        let x = (px - view.offsetX) / view.scale;
+        let y = evaluateMath(fStr, x);
+        if(y !== null && !isNaN(y) && isFinite(y)) {
+          let py = view.offsetY - y * view.scale;
+          if (firstPointF || py < -5000 || py > 5000) { ctx.moveTo(px, py); firstPointF = false; } 
+          else ctx.lineTo(px, py);
+        } else { firstPointF = true; }
+      }
+      ctx.stroke();
     }
-    ctx.stroke();
 
-    // 2. g(x)
+    // 2. Funkcja przekształcona g(x) lub funkcja z zadania szkicownika
     ctx.strokeStyle = '#3b82f6';
     ctx.setLineDash([]);
     ctx.lineWidth = 2.5;
@@ -493,28 +556,7 @@
     
     for(let px = 0; px <= canvas.width; px += 2) {
       let x = (px - view.offsetX) / view.scale;
-      let y = null;
-
-      try {
-        if (mode === 'vector') {
-          let f_val = evaluateMath(fStr, x - p);
-          if (f_val !== null) y = f_val + q;
-        } 
-        else if (mode === 'symX') {
-          let f_val = evaluateMath(fStr, x);
-          if (f_val !== null) y = -f_val;
-        } 
-        else if (mode === 'symY') { y = evaluateMath(fStr, -x); } 
-        else if (mode === 'sym00') {
-          let f_val = evaluateMath(fStr, -x);
-          if (f_val !== null) y = -f_val;
-        } 
-        else if (mode === 'absF') {
-          let f_val = evaluateMath(fStr, x);
-          if (f_val !== null) y = Math.abs(f_val);
-        } 
-        else if (mode === 'absX') { y = evaluateMath(fStr, Math.abs(x)); }
-      } catch(e) {}
+      let y = currentAppMode === 'calc' ? evaluateTransformed(x) : evaluateMath(currentSketchTask.formula, x);
 
       if(y !== null && !isNaN(y) && isFinite(y)) {
         let py = view.offsetY - y * view.scale;
@@ -526,150 +568,81 @@
   }
 
   function updateUI() {
-    const mode = els.type.value;
-    const fStr = els.fx.value;
-    
-    if (mode === 'vector') {
-      els.slidersDiv.style.display = 'flex';
+    if (currentAppMode === 'calc') {
       const p = parseFloat(els.p.value);
       const q = parseFloat(els.q.value);
-      
       els.pVal.innerText = p;
       els.qVal.innerText = q;
-
-      let pStr = p > 0 ? `- ${p}` : p < 0 ? `+ ${Math.abs(p)}` : '';
-      let qStr = q > 0 ? `+ ${q}` : q < 0 ? `- ${Math.abs(q)}` : '';
-      let replacedX = p === 0 ? 'x' : `(x ${pStr})`;
-      
-      els.formula.innerText = `g(x) = ${fStr.replace(/x/g, replacedX)} ${qStr}`;
-      els.info.innerText = `Wektor [${p}, ${q}]`;
-    } else {
-      els.slidersDiv.style.display = 'none'; 
-      
-      if (mode === 'symX') {
-        els.formula.innerText = `g(x) = -(${fStr})`; els.info.innerText = `Symetria OX`;
-      } else if (mode === 'symY') {
-        els.formula.innerText = `g(x) = ${fStr.replace(/x/g, '(-x)')}`; els.info.innerText = `Symetria OY`;
-      } else if (mode === 'sym00') {
-        els.formula.innerText = `g(x) = -(${fStr.replace(/x/g, '(-x)')})`; els.info.innerText = `Symetria (0,0)`;
-      } else if (mode === 'absF') {
-        els.formula.innerText = `g(x) = |${fStr}|`; els.info.innerText = `Moduł z funkcji`;
-      } else if (mode === 'absX') {
-        els.formula.innerText = `g(x) = ${fStr.replace(/x/g, '|x|')}`; els.info.innerText = `Moduł z argumentu`;
-      }
+      analyzeProperties();
     }
     drawGraph();
+  }
+
+  // Generowanie losowego zadania do szkicownika
+  function generateNewSketchTask() {
+    const tasks = [
+      { text: "Naszkicuj wykres funkcji g(x) = x - 2", formula: "x - 2", zero: "2", oy: "-2" },
+      { text: "Naszkicuj wykres funkcji g(x) = x + 3", formula: "x + 3", zero: "-3", oy: "3" },
+      { text: "Naszkicuj wykres funkcji g(x) = -x + 4", formula: "-x + 4", zero: "4", oy: "4" },
+      { text: "Naszkicuj wykres funkcji g(x) = 2x - 4", formula: "2*x - 4", zero: "2", oy: "-4" }
+    ];
+    currentSketchTask = tasks[Math.floor(Math.random() * tasks.length)];
+    els.sketchTaskText.innerText = "Zadanie: " + currentSketchTask.text;
+    els.sketchZero.value = "";
+    els.sketchOy.value = "";
+    els.sketchFeedback.style.display = "none";
+    drawGraph();
+  }
+
+  function checkSketchAnswer() {
+    const userZero = els.sketchZero.value.trim().replace(',', '.');
+    const userOy = els.sketchOy.value.trim().replace(',', '.');
+
+    let correctZero = currentSketchTask.zero;
+    let correctOy = currentSketchTask.oy;
+
+    if (userZero === correctZero && userOy === correctOy) {
+      els.sketchFeedback.innerText = "🎉 Dobra robota! Własności odczytane poprawnie!";
+      els.sketchFeedback.className = "sketch-feedback success";
+    } else {
+      els.sketchFeedback.innerText = `❌ Błąd. Prawidłowe miejsce zerowe: ${correctZero}, punkt OY: ${correctOy}`;
+      els.sketchFeedback.className = "sketch-feedback error";
+    }
+    els.sketchFeedback.style.display = "block";
   }
 
   function zoomByFactor(factor) {
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-
+    const centerX = canvas.width / 2, centerY = canvas.height / 2;
     view.offsetX = centerX - (centerX - view.offsetX) * factor;
     view.offsetY = centerY - (centerY - view.offsetY) * factor;
     view.scale *= factor;
-
     if(view.scale < 10) view.scale = 10;
     if(view.scale > 200) view.scale = 200;
-
     drawGraph();
   }
 
-  // Obsługa myszy i dotyku
-  function getTouchDistance(touches) {
-    let dx = touches[0].clientX - touches[1].clientX;
-    let dy = touches[0].clientY - touches[1].clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
-
-  canvas.addEventListener('mousedown', (e) => {
-    isDragging = true;
-    lastX = e.clientX; lastY = e.clientY;
-  });
-
+  // Dotyk i mysz
+  canvas.addEventListener('mousedown', (e) => { isDragging = true; lastX = e.clientX; lastY = e.clientY; });
   canvas.addEventListener('mousemove', (e) => {
     if (!isDragging) return;
-    view.offsetX += (e.clientX - lastX);
-    view.offsetY += (e.clientY - lastY);
+    view.offsetX += (e.clientX - lastX); view.offsetY += (e.clientY - lastY);
     lastX = e.clientX; lastY = e.clientY;
     drawGraph();
   });
-
   window.addEventListener('mouseup', () => { isDragging = false; });
 
-  canvas.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 1) {
-      isDragging = true;
-      lastX = e.touches[0].clientX;
-      lastY = e.touches[0].clientY;
-    } else if (e.touches.length === 2) {
-      isDragging = false;
-      initialPinchDist = getTouchDistance(e.touches);
-      initialScale = view.scale;
-    }
-  }, {passive: false});
-
-  canvas.addEventListener('touchmove', (e) => {
-    e.preventDefault();
-    if (isDragging && e.touches.length === 1) {
-      view.offsetX += (e.touches[0].clientX - lastX);
-      view.offsetY += (e.touches[0].clientY - lastY);
-      lastX = e.touches[0].clientX;
-      lastY = e.touches[0].clientY;
-      drawGraph();
-    } else if (e.touches.length === 2 && initialPinchDist !== null) {
-      let currentDist = getTouchDistance(e.touches);
-      let factor = currentDist / initialPinchDist;
-      let newScale = initialScale * factor;
-      if (newScale >= 10 && newScale <= 200) {
-        view.scale = newScale;
-        drawGraph();
-      }
-    }
-  }, {passive: false});
-
-  canvas.addEventListener('touchend', (e) => {
-    if (e.touches.length < 2) initialPinchDist = null;
-    if (e.touches.length === 0) isDragging = false;
-  });
-
-  canvas.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    const zoomIntensity = 0.1;
-    const wheel = e.deltaY < 0 ? 1 : -1;
-    const zoomFactor = Math.exp(wheel * zoomIntensity);
-    
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    view.offsetX = mouseX - (mouseX - view.offsetX) * zoomFactor;
-    view.offsetY = mouseY - (mouseY - view.offsetY) * zoomFactor;
-    view.scale *= zoomFactor;
-    
-    if(view.scale < 10) view.scale = 10;
-    if(view.scale > 200) view.scale = 200;
-
-    drawGraph();
-  }, {passive: false});
-
-  // Przyciski interfejsu
   els.btnZoomIn.addEventListener('click', (e) => { e.stopPropagation(); zoomByFactor(1.35); });
   els.btnZoomOut.addEventListener('click', (e) => { e.stopPropagation(); zoomByFactor(1 / 1.35); });
-
   els.btnCenter.addEventListener('click', (e) => {
     e.stopPropagation();
-    view.offsetX = canvas.width / 2;
-    view.offsetY = canvas.height / 2;
-    view.scale = 30;
+    view.offsetX = canvas.width / 2; view.offsetY = canvas.height / 2; view.scale = 30;
     drawGraph();
   });
 
   function toggleFullscreen() {
     document.body.classList.toggle('fullscreen-mode');
     setTimeout(() => {
-      view.offsetX = canvas.width / 2;
-      view.offsetY = canvas.height / 2;
+      view.offsetX = canvas.width / 2; view.offsetY = canvas.height / 2;
       drawGraph();
     }, 50);
   }
@@ -680,9 +653,7 @@
   [els.fx, els.type, els.p, els.q].forEach(el => el.addEventListener('input', updateUI));
   els.type.addEventListener('change', updateUI); 
 
-  window.addEventListener('resize', () => {
-    drawGraph();
-  });
+  window.addEventListener('resize', drawGraph);
 
   // Inicjalizacja
   resizeCanvasToDisplay();

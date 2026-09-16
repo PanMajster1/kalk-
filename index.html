@@ -1,44 +1,694 @@
-  // --- POPRAWIONA INTEGRACJA Z GEMINI API ---
-  els.btnAskAi.addEventListener('click', async () => {
-    const apiKey = els.apiKey.value.trim();
-    const task = els.aiTask.value.trim();
-
-    if (!apiKey) {
-      alert('Wklej swój klucz Gemini API!');
-      return;
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Kalkulator Przekształceń Funkcji PRO</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+  <style>
+    :root {
+      --bg-main: #0a0a0a;
+      --bg-panel: #1e1e1e;
+      --bg-graph: #13151c;
+      --text-main: #ffffff;
+      --text-muted: #888888;
+      --accent-blue: #3b82f6;
+      --accent-red: #ef4444;
     }
-    if (!task) {
-      alert('Wpisz treść zadania!');
-      return;
+    
+    * { box-sizing: border-box; touch-action: none; }
+    
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    
+    .app-container {
+      width: 100%;
+      max-width: 420px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s ease;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+    
+    .graph-container {
+      width: 100%;
+      aspect-ratio: 1;
+      background-color: var(--bg-graph);
+      border-radius: 12px;
+      margin-bottom: 15px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    
+    canvas {
+      width: 100%;
+      height: 100%;
+      border-radius: 12px;
+      cursor: grab;
+      display: block;
+    }
+    
+    canvas:active {
+      cursor: grabbing;
     }
 
-    els.aiOutput.style.display = 'block';
-    els.aiOutput.innerText = '⏳ Gemini analizuje zadanie...';
+    .graph-controls {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      display: flex;
+      gap: 6px;
+      z-index: 10;
+    }
 
+    .graph-exit-fs {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: none;
+      gap: 6px;
+      z-index: 10;
+    }
+
+    body.fullscreen-mode .graph-exit-fs {
+      display: flex;
+    }
+
+    .graph-btn {
+      background: rgba(42, 45, 58, 0.85);
+      border: 1px solid #444;
+      color: white;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      backdrop-filter: blur(4px);
+      user-select: none;
+    }
+
+    .graph-btn:active {
+      background: rgba(59, 130, 246, 0.8);
+    }
+    
+    .info-section {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding: 0 5px;
+    }
+    
+    .info-block {
+      display: flex;
+      flex-direction: column;
+      width: 50%;
+    }
+    
+    .info-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+    
+    .info-value {
+      font-size: 13px;
+      font-weight: 600;
+      word-wrap: break-word;
+    }
+    
+    .controls-panel {
+      background-color: var(--bg-panel);
+      border-radius: 20px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      touch-action: auto;
+    }
+    
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .control-label {
+      width: 85px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+    
+    .input-func, .select-func {
+      background: #2a2a2a;
+      border: 1px solid #333;
+      color: white;
+      font-size: 13px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      outline: none;
+      flex-grow: 1;
+      margin-left: 10px;
+      transition: border-color 0.2s;
+    }
+
+    .input-func.error {
+      border-color: var(--accent-red);
+      color: var(--accent-red);
+    }
+
+    .select-func {
+      cursor: pointer;
+      appearance: none;
+    }
+    
+    .slider-container {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .slider-wrapper {
+      flex-grow: 1;
+      margin: 0 10px;
+      display: flex;
+      align-items: center;
+      touch-action: auto;
+    }
+    
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      background: transparent;
+    }
+    
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 18px;
+      width: 6px;
+      border-radius: 2px;
+      background: #ffffff;
+      cursor: pointer;
+      margin-top: -8px;
+    }
+    
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 2px;
+      background: #555;
+      border-radius: 1px;
+    }
+    
+    .val-box {
+      background-color: #2a2a2a;
+      padding: 6px 0;
+      border-radius: 10px;
+      width: 40px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    body.fullscreen-mode .controls-panel,
+    body.fullscreen-mode .info-section,
+    body.fullscreen-mode .header {
+      display: none !important;
+    }
+
+    body.fullscreen-mode {
+      background-color: var(--bg-graph);
+      padding: 0;
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    body.fullscreen-mode .app-container {
+      max-width: 100% !important;
+      height: 100vh;
+      padding: 0;
+      margin: 0;
+      justify-content: center;
+    }
+
+    body.fullscreen-mode .graph-container {
+      width: 100vw;
+      height: 100vh;
+      aspect-ratio: unset;
+      border-radius: 0;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container" id="app-container">
+  <div class="header">
+    <div style="cursor:pointer">←</div>
+    <div style="font-weight:600; font-size:15px;">Wykresy WATCH</div>
+    <div style="cursor:pointer; font-size:18px;" id="btn-fullscreen" title="Pełny ekran">⛶</div>
+  </div>
+
+  <div class="graph-container" id="graph-container">
+    <canvas id="graph" width="400" height="400"></canvas>
+    
+    <div class="graph-controls">
+      <div class="graph-btn" id="btn-zoom-in" title="Przybliż">+</div>
+      <div class="graph-btn" id="btn-zoom-out" title="Oddal">-</div>
+      <div class="graph-btn" id="btn-center" title="Wyśrodkuj">⌖</div>
+    </div>
+
+    <div class="graph-exit-fs">
+      <div class="graph-btn" id="btn-exit-fs" title="Wyjdź z pełnego ekranu">✕</div>
+    </div>
+  </div>
+
+  <div class="info-section">
+    <div class="info-block">
+      <span class="info-label">Wzór g(x)</span>
+      <span class="info-value" id="gx-formula">g(x) = ...</span>
+    </div>
+    <div class="info-block" style="border-left: 1px solid #333; padding-left: 12px;">
+      <span class="info-label">Operacja</span>
+      <span class="info-value" id="vector-info">Wektor</span>
+    </div>
+  </div>
+
+  <div class="controls-panel">
+    <div class="control-row">
+      <span class="control-label">Tryb</span>
+      <select id="transform-type" class="select-func">
+        <option value="vector">Przesunięcie wektor [p, q]</option>
+        <option value="symX">Symetria OX: -f(x)</option>
+        <option value="symY">Symetria OY: f(-x)</option>
+        <option value="sym00">Symetria (0,0): -f(-x)</option>
+        <option value="absF">Wartość bezwzgl: |f(x)|</option>
+        <option value="absX">Wartość bezwzgl arg: f(|x|)</option>
+      </select>
+    </div>
+
+    <div class="control-row">
+      <span class="control-label">f(x) =</span>
+      <input type="text" class="input-func" id="fx-input" value="x + 2">
+    </div>
+    
+    <div id="vector-sliders" class="slider-container">
+      <div class="control-row">
+        <span class="control-label">Przes. X (p)</span>
+        <div class="slider-wrapper">
+          <input type="range" id="p-slider" min="-20" max="20" step="0.5" value="0">
+        </div>
+        <div class="val-box" id="p-val">0</div>
+      </div>
+
+      <div class="control-row">
+        <span class="control-label">Przes. Y (q)</span>
+        <div class="slider-wrapper">
+          <input type="range" id="q-slider" min="-20" max="20" step="0.5" value="0">
+        </div>
+        <div class="val-box" id="q-val">0</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('graph');
+  const ctx = canvas.getContext('2d');
+  
+  const els = {
+    fx: document.getElementById('fx-input'),
+    type: document.getElementById('transform-type'),
+    p: document.getElementById('p-slider'),
+    q: document.getElementById('q-slider'),
+    pVal: document.getElementById('p-val'),
+    qVal: document.getElementById('q-val'),
+    formula: document.getElementById('gx-formula'),
+    info: document.getElementById('vector-info'),
+    slidersDiv: document.getElementById('vector-sliders'),
+    btnCenter: document.getElementById('btn-center'),
+    btnZoomIn: document.getElementById('btn-zoom-in'),
+    btnZoomOut: document.getElementById('btn-zoom-out'),
+    btnFullscreen: document.getElementById('btn-fullscreen'),
+    btnExitFs: document.getElementById('btn-exit-fs'),
+    graphContainer: document.getElementById('graph-container')
+  };
+
+  let view = {
+    offsetX: 0,
+    offsetY: 0,
+    scale: 30 // 1 kratka = 30 pikseli
+  };
+
+  let isDragging = false;
+  let lastX = 0, lastY = 0;
+  let initialPinchDist = null;
+  let initialScale = 30;
+
+  function resizeCanvasToDisplay() {
+    const rect = els.graphContainer.getBoundingClientRect();
+    if (canvas.width !== rect.width || canvas.height !== rect.height) {
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      if (view.offsetX === 0 && view.offsetY === 0) {
+        view.offsetX = canvas.width / 2;
+        view.offsetY = canvas.height / 2;
+      }
+    }
+  }
+
+  function evaluateMath(expression, xVal) {
     try {
-      // Używamy stabilnego i uniwersalnego endpointu dla gemini-1.5-flash (działa z każdym darmowym kluczem z AI Studio)
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: "Rozwiąż to zadanie matematyczne krok po kroku po polsku:\n\n" + task }]
-          }]
-        })
-      });
-
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error.message || 'Błąd API');
-      }
-
-      if (data.candidates && data.candidates[0].content.parts[0].text) {
-        els.aiOutput.innerText = data.candidates[0].content.parts[0].text;
-      } else {
-        els.aiOutput.innerText = 'Błąd: Pusta odpowiedź od modelu.';
-      }
-    } catch (err) {
-      els.aiOutput.innerText = 'Błąd: ' + err.message;
+      let sanitizedExpr = expression.replace(/,/g, '.');
+      let res = math.evaluate(sanitizedExpr, { x: xVal });
+      els.fx.classList.remove('error');
+      return res;
+    } catch(e) {
+      els.fx.classList.add('error');
+      return null;
     }
+  }
+
+  function drawGrid() {
+    resizeCanvasToDisplay();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    const step = 1; 
+    
+    ctx.strokeStyle = '#2a2d3a';
+    ctx.lineWidth = 1;
+    
+    let startX = Math.floor(-view.offsetX / view.scale / step) * step;
+    let endX = Math.ceil((canvas.width - view.offsetX) / view.scale / step) * step;
+    
+    for(let i = startX; i <= endX; i += step) {
+      let px = view.offsetX + i * view.scale;
+      ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, canvas.height); ctx.stroke();
+    }
+
+    let startY = Math.floor(-(canvas.height - view.offsetY) / view.scale / step) * step;
+    let endY = Math.ceil(view.offsetY / view.scale / step) * step;
+
+    for(let i = startY; i <= endY; i += step) {
+      let py = view.offsetY - i * view.scale;
+      ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(canvas.width, py); ctx.stroke();
+    }
+    
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, view.offsetY); ctx.lineTo(canvas.width, view.offsetY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(view.offsetX, 0); ctx.lineTo(view.offsetX, canvas.height); ctx.stroke();
+
+    if (canvas.width > 150 && view.scale >= 15) {
+      ctx.fillStyle = '#aaaaaa';
+      ctx.font = '10px system-ui';
+      
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      for(let i = startX; i <= endX; i += step) {
+        if (i !== 0) {
+          let px = view.offsetX + i * view.scale;
+          let py = Math.min(Math.max(view.offsetY + 4, 5), canvas.height - 15);
+          ctx.fillText(i, px, py);
+        }
+      }
+      
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      for(let i = startY; i <= endY; i += step) {
+        if (i !== 0) {
+          let py = view.offsetY - i * view.scale;
+          let px = Math.min(Math.max(view.offsetX - 6, 15), canvas.width - 5);
+          ctx.fillText(i, px, py);
+        }
+      }
+      
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'top';
+      ctx.fillText('0', view.offsetX - 4, view.offsetY + 4);
+    }
+  }
+
+  function drawGraph() {
+    drawGrid();
+    
+    const fStr = els.fx.value;
+    const mode = els.type.value;
+    const p = parseFloat(els.p.value);
+    const q = parseFloat(els.q.value);
+
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    // 1. f(x)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    let firstPointF = true;
+    for(let px = 0; px <= canvas.width; px += 2) {
+      let x = (px - view.offsetX) / view.scale;
+      let y = evaluateMath(fStr, x);
+      if(y !== null && !isNaN(y) && isFinite(y)) {
+        let py = view.offsetY - y * view.scale;
+        if (firstPointF || py < -5000 || py > 5000) { ctx.moveTo(px, py); firstPointF = false; } 
+        else ctx.lineTo(px, py);
+      } else { firstPointF = true; }
+    }
+    ctx.stroke();
+
+    // 2. g(x)
+    ctx.strokeStyle = '#3b82f6';
+    ctx.setLineDash([]);
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    let firstPointG = true;
+    
+    for(let px = 0; px <= canvas.width; px += 2) {
+      let x = (px - view.offsetX) / view.scale;
+      let y = null;
+
+      try {
+        if (mode === 'vector') {
+          let f_val = evaluateMath(fStr, x - p);
+          if (f_val !== null) y = f_val + q;
+        } 
+        else if (mode === 'symX') {
+          let f_val = evaluateMath(fStr, x);
+          if (f_val !== null) y = -f_val;
+        } 
+        else if (mode === 'symY') { y = evaluateMath(fStr, -x); } 
+        else if (mode === 'sym00') {
+          let f_val = evaluateMath(fStr, -x);
+          if (f_val !== null) y = -f_val;
+        } 
+        else if (mode === 'absF') {
+          let f_val = evaluateMath(fStr, x);
+          if (f_val !== null) y = Math.abs(f_val);
+        } 
+        else if (mode === 'absX') { y = evaluateMath(fStr, Math.abs(x)); }
+      } catch(e) {}
+
+      if(y !== null && !isNaN(y) && isFinite(y)) {
+        let py = view.offsetY - y * view.scale;
+        if (firstPointG || py < -5000 || py > 5000) { ctx.moveTo(px, py); firstPointG = false; } 
+        else { ctx.lineTo(px, py); }
+      } else { firstPointG = true; }
+    }
+    ctx.stroke();
+  }
+
+  function updateUI() {
+    const mode = els.type.value;
+    const fStr = els.fx.value;
+    
+    if (mode === 'vector') {
+      els.slidersDiv.style.display = 'flex';
+      const p = parseFloat(els.p.value);
+      const q = parseFloat(els.q.value);
+      
+      els.pVal.innerText = p;
+      els.qVal.innerText = q;
+
+      let pStr = p > 0 ? `- ${p}` : p < 0 ? `+ ${Math.abs(p)}` : '';
+      let qStr = q > 0 ? `+ ${q}` : q < 0 ? `- ${Math.abs(q)}` : '';
+      let replacedX = p === 0 ? 'x' : `(x ${pStr})`;
+      
+      els.formula.innerText = `g(x) = ${fStr.replace(/x/g, replacedX)} ${qStr}`;
+      els.info.innerText = `Wektor [${p}, ${q}]`;
+    } else {
+      els.slidersDiv.style.display = 'none'; 
+      
+      if (mode === 'symX') {
+        els.formula.innerText = `g(x) = -(${fStr})`; els.info.innerText = `Symetria OX`;
+      } else if (mode === 'symY') {
+        els.formula.innerText = `g(x) = ${fStr.replace(/x/g, '(-x)')}`; els.info.innerText = `Symetria OY`;
+      } else if (mode === 'sym00') {
+        els.formula.innerText = `g(x) = -(${fStr.replace(/x/g, '(-x)')})`; els.info.innerText = `Symetria (0,0)`;
+      } else if (mode === 'absF') {
+        els.formula.innerText = `g(x) = |${fStr}|`; els.info.innerText = `Moduł z funkcji`;
+      } else if (mode === 'absX') {
+        els.formula.innerText = `g(x) = ${fStr.replace(/x/g, '|x|')}`; els.info.innerText = `Moduł z argumentu`;
+      }
+    }
+    drawGraph();
+  }
+
+  function zoomByFactor(factor) {
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    view.offsetX = centerX - (centerX - view.offsetX) * factor;
+    view.offsetY = centerY - (centerY - view.offsetY) * factor;
+    view.scale *= factor;
+
+    if(view.scale < 10) view.scale = 10;
+    if(view.scale > 200) view.scale = 200;
+
+    drawGraph();
+  }
+
+  // Obsługa myszy i dotyku
+  function getTouchDistance(touches) {
+    let dx = touches[0].clientX - touches[1].clientX;
+    let dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  canvas.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    lastX = e.clientX; lastY = e.clientY;
   });
+
+  canvas.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    view.offsetX += (e.clientX - lastX);
+    view.offsetY += (e.clientY - lastY);
+    lastX = e.clientX; lastY = e.clientY;
+    drawGraph();
+  });
+
+  window.addEventListener('mouseup', () => { isDragging = false; });
+
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      isDragging = true;
+      lastX = e.touches[0].clientX;
+      lastY = e.touches[0].clientY;
+    } else if (e.touches.length === 2) {
+      isDragging = false;
+      initialPinchDist = getTouchDistance(e.touches);
+      initialScale = view.scale;
+    }
+  }, {passive: false});
+
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (isDragging && e.touches.length === 1) {
+      view.offsetX += (e.touches[0].clientX - lastX);
+      view.offsetY += (e.touches[0].clientY - lastY);
+      lastX = e.touches[0].clientX;
+      lastY = e.touches[0].clientY;
+      drawGraph();
+    } else if (e.touches.length === 2 && initialPinchDist !== null) {
+      let currentDist = getTouchDistance(e.touches);
+      let factor = currentDist / initialPinchDist;
+      let newScale = initialScale * factor;
+      if (newScale >= 10 && newScale <= 200) {
+        view.scale = newScale;
+        drawGraph();
+      }
+    }
+  }, {passive: false});
+
+  canvas.addEventListener('touchend', (e) => {
+    if (e.touches.length < 2) initialPinchDist = null;
+    if (e.touches.length === 0) isDragging = false;
+  });
+
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const zoomIntensity = 0.1;
+    const wheel = e.deltaY < 0 ? 1 : -1;
+    const zoomFactor = Math.exp(wheel * zoomIntensity);
+    
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    view.offsetX = mouseX - (mouseX - view.offsetX) * zoomFactor;
+    view.offsetY = mouseY - (mouseY - view.offsetY) * zoomFactor;
+    view.scale *= zoomFactor;
+    
+    if(view.scale < 10) view.scale = 10;
+    if(view.scale > 200) view.scale = 200;
+
+    drawGraph();
+  }, {passive: false});
+
+  // Przyciski interfejsu
+  els.btnZoomIn.addEventListener('click', (e) => { e.stopPropagation(); zoomByFactor(1.35); });
+  els.btnZoomOut.addEventListener('click', (e) => { e.stopPropagation(); zoomByFactor(1 / 1.35); });
+
+  els.btnCenter.addEventListener('click', (e) => {
+    e.stopPropagation();
+    view.offsetX = canvas.width / 2;
+    view.offsetY = canvas.height / 2;
+    view.scale = 30;
+    drawGraph();
+  });
+
+  function toggleFullscreen() {
+    document.body.classList.toggle('fullscreen-mode');
+    setTimeout(() => {
+      view.offsetX = canvas.width / 2;
+      view.offsetY = canvas.height / 2;
+      drawGraph();
+    }, 50);
+  }
+
+  els.btnFullscreen.addEventListener('click', toggleFullscreen);
+  els.btnExitFs.addEventListener('click', toggleFullscreen);
+
+  [els.fx, els.type, els.p, els.q].forEach(el => el.addEventListener('input', updateUI));
+  els.type.addEventListener('change', updateUI); 
+
+  window.addEventListener('resize', () => {
+    drawGraph();
+  });
+
+  // Inicjalizacja
+  resizeCanvasToDisplay();
+  view.offsetX = canvas.width / 2;
+  view.offsetY = canvas.height / 2;
+  updateUI();
+</script>
+</body>
+</html>

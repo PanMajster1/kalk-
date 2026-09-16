@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Kalkulator Przekształceń Funkcji WATCH PRO</title>
+  <title>Kalkulator Przekształceń Funkcji PRO</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
   <style>
     :root {
@@ -361,22 +361,27 @@
     graphContainer: document.getElementById('graph-container')
   };
 
+  // Skala początkowa: 1 kratka = 20 pikseli, co daje ładny widok od ok. -10 do 10 na ekranie
   let view = {
-    offsetX: canvas.width / 2,
-    offsetY: canvas.height / 2,
-    scale: 40
+    offsetX: 0,
+    offsetY: 0,
+    scale: 20 
   };
 
   let isDragging = false;
   let lastX = 0, lastY = 0;
   let initialPinchDist = null;
-  let initialScale = 40;
+  let initialScale = 20;
 
   function resizeCanvasToDisplay() {
     const rect = els.graphContainer.getBoundingClientRect();
     if (canvas.width !== rect.width || canvas.height !== rect.height) {
       canvas.width = rect.width;
       canvas.height = rect.height;
+      if (view.offsetX === 0 && view.offsetY === 0) {
+        view.offsetX = canvas.width / 2;
+        view.offsetY = canvas.height / 2;
+      }
     }
   }
 
@@ -391,55 +396,10 @@
     }
   }
 
-  // Poprawiony auto-zoom: automatycznie dopasowuje skalę do wpisanej funkcji
-  function autoScaleIfNeeded() {
-    resizeCanvasToDisplay();
-    const fStr = els.fx.value;
-    const mode = els.type.value;
-    const p = parseFloat(els.p.value);
-    const q = parseFloat(els.q.value);
-
-    let maxVal = 5;
-    for (let px = 0; px <= canvas.width; px += 20) {
-      let x = (px - (canvas.width / 2)) / 40;
-      let y = null;
-      try {
-        if (mode === 'vector') {
-          let f_val = evaluateMath(fStr, x - p);
-          if (f_val !== null) y = f_val + q;
-        } else if (mode === 'symX') {
-          let f_val = evaluateMath(fStr, x);
-          if (f_val !== null) y = -f_val;
-        } else if (mode === 'symY') {
-          y = evaluateMath(fStr, -x);
-        } else if (mode === 'sym00') {
-          let f_val = evaluateMath(fStr, -x);
-          if (f_val !== null) y = -f_val;
-        } else if (mode === 'absF') {
-          let f_val = evaluateMath(fStr, x);
-          if (f_val !== null) y = Math.abs(f_val);
-        } else if (mode === 'absX') {
-          y = evaluateMath(fStr, Math.abs(x));
-        }
-      } catch(e) {}
-
-      if (y !== null && !isNaN(y) && isFinite(y)) {
-        if (Math.abs(y) > maxVal) maxVal = Math.abs(y);
-      }
-    }
-
-    // Wyliczamy optymalną skalę, żeby wykres zajmował ok. 60-70% ekranu
-    let targetUnits = Math.max(5, maxVal * 1.5);
-    view.scale = (canvas.height / 2) / targetUnits;
-    view.offsetX = canvas.width / 2;
-    view.offsetY = canvas.height / 2;
-  }
-
-  // Bezpieczny krok siatki zapobiegający nakładaniu się linii
+  // Inteligentny krok siatki (pilnuje, żeby liczby nie nachodziły na siebie)
   function getGridStep(scale) {
-    const minPixelsBetweenLines = 40;
-    let rawStep = minPixelsBetweenLines / scale;
-    
+    const minPixels = 50;
+    let rawStep = minPixels / scale;
     let magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
     let residual = rawStep / magnitude;
     
@@ -449,8 +409,7 @@
     else if (residual > 1) step = 2 * magnitude;
     else step = magnitude;
 
-    if (step < 0.1) step = 0.1;
-    return step;
+    return Math.max(1, step); // Wymuszamy, aby kroki były całkowitymi wartościami (np. co 1, co 5, co 10)
   }
 
   function drawGrid() {
@@ -477,32 +436,43 @@
       ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(canvas.width, py); ctx.stroke();
     }
     
-    // Osie główne
+    // Osie główne X i Y
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(0, view.offsetY); ctx.lineTo(canvas.width, view.offsetY); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(view.offsetX, 0); ctx.lineTo(view.offsetX, canvas.height); ctx.stroke();
 
-    // Etykiety cyfrowe
+    // Rysowanie wartości (podpisów) na punktach osi
     if (canvas.width > 150) {
-      ctx.fillStyle = '#888888';
-      ctx.font = '10px system-ui';
+      ctx.fillStyle = '#aaaaaa';
+      ctx.font = '11px system-ui';
+      
+      // Podpisy na osi X
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
-      
       for(let i = startX; i <= endX; i += step) {
-        if (Math.abs(i) > 0.001 && Math.abs(i) / step >= 1) {
-          ctx.fillText(Number(i.toFixed(2)), view.offsetX + i * view.scale, view.offsetY + 5);
+        if (Math.abs(i) > 0.001) {
+          let px = view.offsetX + i * view.scale;
+          let py = Math.min(Math.max(view.offsetY + 5, 10), canvas.height - 20); // Trzyma etykietę wewnątrz ekranu
+          ctx.fillText(i, px, py);
         }
       }
       
+      // Podpisy na osi Y
       ctx.textAlign = 'right';
       ctx.textBaseline = 'middle';
       for(let i = startY; i <= endY; i += step) {
-        if (Math.abs(i) > 0.001 && Math.abs(i) / step >= 1) {
-          ctx.fillText(Number(i.toFixed(2)), view.offsetX - 5, view.offsetY - i * view.scale);
+        if (Math.abs(i) > 0.001) {
+          let py = view.offsetY - i * view.scale;
+          let px = Math.min(Math.max(view.offsetX - 8, 20), canvas.width - 10);
+          ctx.fillText(i, px, py);
         }
       }
+      
+      // Zero w rogu osi
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'top';
+      ctx.fillText('0', view.offsetX - 5, view.offsetY + 5);
     }
   }
 
@@ -517,7 +487,7 @@
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
 
-    // 1. Funkcja bazowa f(x)
+    // 1. Funkcja bazowa f(x) (biała przerywana)
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.setLineDash([4, 4]);
     ctx.lineWidth = 1.5;
@@ -534,7 +504,7 @@
     }
     ctx.stroke();
 
-    // 2. Funkcja przekształcona g(x)
+    // 2. Funkcja przekształcona g(x) (niebieska ciągła)
     ctx.strokeStyle = '#3b82f6';
     ctx.setLineDash([]);
     ctx.lineWidth = 2.5;
@@ -575,7 +545,7 @@
     ctx.stroke();
   }
 
-  function updateUI(shouldAutoScale = false) {
+  function updateUI() {
     const mode = els.type.value;
     const fStr = els.fx.value;
     
@@ -608,10 +578,6 @@
         els.formula.innerText = `g(x) = ${fStr.replace(/x/g, '|x|')}`; els.info.innerText = `Moduł z argumentu`;
       }
     }
-
-    if (shouldAutoScale) {
-      autoScaleIfNeeded();
-    }
     drawGraph();
   }
 
@@ -623,13 +589,13 @@
     view.offsetY = centerY - (centerY - view.offsetY) * factor;
     view.scale *= factor;
 
-    if(view.scale < 2) view.scale = 2;
-    if(view.scale > 2000) view.scale = 2000;
+    if(view.scale < 5) view.scale = 5;
+    if(view.scale > 500) view.scale = 500;
 
     drawGraph();
   }
 
-  // Dotyk i mysz
+  // Obsługa myszy i dotyku
   function getTouchDistance(touches) {
     let dx = touches[0].clientX - touches[1].clientX;
     let dy = touches[0].clientY - touches[1].clientY;
@@ -675,7 +641,7 @@
       let currentDist = getTouchDistance(e.touches);
       let factor = currentDist / initialPinchDist;
       let newScale = initialScale * factor;
-      if (newScale >= 2 && newScale <= 2000) {
+      if (newScale >= 5 && newScale <= 500) {
         view.scale = newScale;
         drawGraph();
       }
@@ -701,8 +667,8 @@
     view.offsetY = mouseY - (mouseY - view.offsetY) * zoomFactor;
     view.scale *= zoomFactor;
     
-    if(view.scale < 2) view.scale = 2;
-    if(view.scale > 2000) view.scale = 2000;
+    if(view.scale < 5) view.scale = 5;
+    if(view.scale > 500) view.scale = 500;
 
     drawGraph();
   }, {passive: false});
@@ -713,14 +679,17 @@
 
   els.btnCenter.addEventListener('click', (e) => {
     e.stopPropagation();
-    autoScaleIfNeeded();
+    view.offsetX = canvas.width / 2;
+    view.offsetY = canvas.height / 2;
+    view.scale = 20; // Reset do domyślnej skali (1 kratka)
     drawGraph();
   });
 
   function toggleFullscreen() {
     document.body.classList.toggle('fullscreen-mode');
     setTimeout(() => {
-      autoScaleIfNeeded();
+      view.offsetX = canvas.width / 2;
+      view.offsetY = canvas.height / 2;
       drawGraph();
     }, 50);
   }
@@ -728,20 +697,18 @@
   els.btnFullscreen.addEventListener('click', toggleFullscreen);
   els.btnExitFs.addEventListener('click', toggleFullscreen);
 
-  // Auto-skalowanie wywołujemy TYLKO przy zmianie wzoru funkcji lub trybu
-  els.fx.addEventListener('input', () => updateUI(true));
-  els.type.addEventListener('change', () => updateUI(true));
-  
-  // Przesuwanie suwakami nie resetuje auto-zoomu, tylko płynnie przesuwa wykres
-  [els.p, els.q].forEach(el => el.addEventListener('input', () => updateUI(false)));
+  [els.fx, els.type, els.p, els.q].forEach(el => el.addEventListener('input', updateUI));
+  els.type.addEventListener('change', updateUI); 
 
   window.addEventListener('resize', () => {
     drawGraph();
   });
 
   // Inicjalizacja
-  autoScaleIfNeeded();
-  updateUI(false);
+  resizeCanvasToDisplay();
+  view.offsetX = canvas.width / 2;
+  view.offsetY = canvas.height / 2;
+  updateUI();
 </script>
 </body>
 </html>

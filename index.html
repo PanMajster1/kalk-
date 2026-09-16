@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -19,7 +20,7 @@
       --accent-red: #ef4444;
     }
     
-    * { box-sizing: border-box; touch-action: none; }
+    * { box-sizing: border-box; }
     
     body {
       margin: 0;
@@ -30,6 +31,8 @@
       justify-content: center;
       min-height: 100vh;
       overflow-x: hidden;
+      /* Pozwól na normalne scrollowanie całej strony */
+      overflow-y: auto; 
     }
     
     .app-container {
@@ -39,7 +42,7 @@
       display: flex;
       flex-direction: column;
       gap: 15px;
-      padding-bottom: 30px;
+      padding-bottom: 40px;
     }
     
     .header {
@@ -49,7 +52,6 @@
       font-size: 18px;
     }
 
-    /* Przełącznik trybów (Kalkulator / Szkicownik) */
     .mode-switch {
       display: flex;
       background: #222;
@@ -81,6 +83,7 @@
       border-radius: 12px;
       position: relative;
       overflow: hidden;
+      flex-shrink: 0;
     }
     
     canvas {
@@ -89,6 +92,8 @@
       border-radius: 12px;
       cursor: grab;
       display: block;
+      /* Blokujemy domyślne gesty tylko na samym canvasie do rysowania/przesuwania wykresu */
+      touch-action: none; 
     }
     canvas:active { cursor: grabbing; }
 
@@ -136,7 +141,6 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      touch-action: auto;
     }
     
     .control-row {
@@ -167,7 +171,7 @@
     .select-func { cursor: pointer; appearance: none; }
     
     .slider-container { display: flex; flex-direction: column; gap: 12px; }
-    .slider-wrapper { flex-grow: 1; margin: 0 10px; display: flex; align-items: center; touch-action: auto; }
+    .slider-wrapper { flex-grow: 1; margin: 0 10px; display: flex; align-items: center; }
     
     input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
     input[type=range]::-webkit-slider-thumb {
@@ -229,7 +233,7 @@
 
     body.fullscreen-mode .panel,
     body.fullscreen-mode .header { display: none !important; }
-    body.fullscreen-mode { background-color: var(--bg-graph); padding: 0; height: 100vh; display: flex; align-items: center; justify-content: center; }
+    body.fullscreen-mode { background-color: var(--bg-graph); padding: 0; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
     body.fullscreen-mode .app-container { max-width: 100% !important; height: 100vh; padding: 0; margin: 0; justify-content: center; }
     body.fullscreen-mode .graph-container { width: 100vw; height: 100vh; aspect-ratio: unset; border-radius: 0; margin: 0; }
   </style>
@@ -300,10 +304,10 @@
     <!-- Automatyczne własności funkcji -->
     <div class="properties-box">
       <div class="prop-title">📊 Odczyt własności z wykresu</div>
-      <div class="prop-item"><span>Dziedzina:</span> <span class="prop-val" id="prop-domain">R</span></div>
-      <div class="prop-item"><span>Zbiór wartości:</span> <span class="prop-val" id="prop-range">R</span></div>
-      <div class="prop-item"><span>Miejsce zerowe ($x_0$):</span> <span class="prop-val" id="prop-zero">-</span></div>
-      <div class="prop-item"><span>Przecięcie OY ($0, y$):</span> <span class="prop-val" id="prop-oy">-</span></div>
+      <div class="prop-item"><span>Dziedzina:</span> <span class="prop-val" id="prop-domain">D = ℝ</span></div>
+      <div class="prop-item"><span>Zbiór wartości:</span> <span class="prop-val" id="prop-range">ZW = ℝ</span></div>
+      <div class="prop-item"><span>Miejsce zerowe (x₀):</span> <span class="prop-val" id="prop-zero">-</span></div>
+      <div class="prop-item"><span>Przecięcie OY (0, y):</span> <span class="prop-val" id="prop-oy">-</span></div>
       <div class="prop-item"><span>Monotoniczność:</span> <span class="prop-val" id="prop-mono">Rosnąca</span></div>
     </div>
   </div>
@@ -405,7 +409,6 @@
     }
   }
 
-  // Obliczanie wartości g(x) dla danego x
   function evaluateTransformed(x) {
     const fStr = els.fx.value;
     const mode = els.type.value;
@@ -434,19 +437,14 @@
     return null;
   }
 
-  // Analiza własności funkcji i wypisywanie w panelu
   function analyzeProperties() {
-    const fStr = els.fx.value;
-    
-    // Dziedzina i Zbiór wartości (ogólne dla większości szkół)
-    els.propDomain.innerText = "x ∈ R";
-    els.propRange.innerText = "y ∈ R";
+    // Czyste, estetyczne wyświetlanie dziedziny i zbioru wartości
+    els.propDomain.innerText = "D = ℝ";
+    els.propRange.innerText = "ZW = ℝ";
 
-    // Przecięcie z OY (dla x = 0)
     let oyVal = evaluateTransformed(0);
-    els.propOy.innerText = (oyVal !== null && !isNaN(oyVal) && isFinite(oyVal)) ? oyVal.toFixed(2).replace(/\.?0+$/, '') : "brak";
+    els.propOy.innerText = (oyVal !== null && !isNaN(oyVal) && isFinite(oyVal)) ? oyVal.toFixed(1).replace(/\.?0+$/, '') : "brak";
 
-    // Miejsce zerowe (szukamy numerycznie przechodzenia przez zero)
     let zeroVal = null;
     for (let x = -50; x <= 50; x += 0.1) {
       let y1 = evaluateTransformed(x);
@@ -459,9 +457,8 @@
         break;
       }
     }
-    els.propZero.innerText = zeroVal !== null ? zeroVal.toFixed(1).replace(/\.?0+$/, '') : "brak / poza kadrem";
+    els.propZero.innerText = zeroVal !== null ? zeroVal.toFixed(1).replace(/\.?0+$/, '') : "brak";
 
-    // Monotoniczność (testujemy dla x = 0 i x = 1)
     let y_test1 = evaluateTransformed(0);
     let y_test2 = evaluateTransformed(1);
     if (y_test1 !== null && y_test2 !== null) {
@@ -469,7 +466,7 @@
       else if (y_test2 < y_test1) els.propMono.innerText = "Malejąca";
       else els.propMono.innerText = "Stała";
     } else {
-      els.propMono.innerText = "Nieliniowa / Zmienna";
+      els.propMono.innerText = "Zmienna";
     }
   }
 
@@ -528,7 +525,6 @@
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
 
-    // 1. Funkcja bazowa f(x) (jeśli jesteśmy w trybie kalkulatora)
     if (currentAppMode === 'calc') {
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
       ctx.setLineDash([4, 4]);
@@ -547,7 +543,6 @@
       ctx.stroke();
     }
 
-    // 2. Funkcja przekształcona g(x) lub funkcja z zadania szkicownika
     ctx.strokeStyle = '#3b82f6';
     ctx.setLineDash([]);
     ctx.lineWidth = 2.5;
@@ -578,7 +573,6 @@
     drawGraph();
   }
 
-  // Generowanie losowego zadania do szkicownika
   function generateNewSketchTask() {
     const tasks = [
       { text: "Naszkicuj wykres funkcji g(x) = x - 2", formula: "x - 2", zero: "2", oy: "-2" },
@@ -621,7 +615,6 @@
     drawGraph();
   }
 
-  // Dotyk i mysz
   canvas.addEventListener('mousedown', (e) => { isDragging = true; lastX = e.clientX; lastY = e.clientY; });
   canvas.addEventListener('mousemove', (e) => {
     if (!isDragging) return;
@@ -655,7 +648,6 @@
 
   window.addEventListener('resize', drawGraph);
 
-  // Inicjalizacja
   resizeCanvasToDisplay();
   view.offsetX = canvas.width / 2;
   view.offsetY = canvas.height / 2;

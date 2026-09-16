@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Kalkulator Przekształceń Funkcji</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Kalkulator Przekształceń Funkcji WATCH</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
   <style>
     :root {
@@ -13,10 +15,10 @@
       --text-main: #ffffff;
       --text-muted: #888888;
       --accent-blue: #3b82f6;
-      --grid-line: #2a2d3a;
+      --accent-red: #ef4444;
     }
     
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; touch-action: manipulation; }
     
     body {
       margin: 0;
@@ -26,22 +28,24 @@
       display: flex;
       justify-content: center;
       min-height: 100vh;
+      overflow-x: hidden;
     }
     
     .app-container {
       width: 100%;
       max-width: 420px;
-      padding: 20px;
+      padding: 15px;
       display: flex;
       flex-direction: column;
+      transition: all 0.3s ease;
     }
     
     .header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 24px;
-      font-size: 20px;
+      margin-bottom: 15px;
+      font-size: 18px;
     }
     
     .graph-container {
@@ -49,21 +53,47 @@
       aspect-ratio: 1;
       background-color: var(--bg-graph);
       border-radius: 12px;
-      margin-bottom: 24px;
+      margin-bottom: 15px;
       position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
     }
     
     canvas {
       width: 100%;
       height: 100%;
       border-radius: 12px;
+      cursor: grab;
+      display: block;
+    }
+    
+    canvas:active {
+      cursor: grabbing;
+    }
+
+    .btn-center {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(42, 45, 58, 0.8);
+      border: 1px solid #333;
+      color: white;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      backdrop-filter: blur(4px);
     }
     
     .info-section {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 30px;
-      padding: 0 10px;
+      margin-bottom: 20px;
+      padding: 0 5px;
     }
     
     .info-block {
@@ -73,26 +103,27 @@
     }
     
     .info-label {
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
       color: var(--text-muted);
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       text-transform: uppercase;
     }
     
     .info-value {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
       word-wrap: break-word;
     }
     
     .controls-panel {
       background-color: var(--bg-panel);
-      border-radius: 24px;
-      padding: 24px 20px;
+      border-radius: 20px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 14px;
+      transition: opacity 0.3s ease;
     }
     
     .control-row {
@@ -102,8 +133,8 @@
     }
     
     .control-label {
-      width: 90px;
-      font-size: 14px;
+      width: 85px;
+      font-size: 13px;
       font-weight: 500;
       color: var(--text-muted);
     }
@@ -112,12 +143,18 @@
       background: #2a2a2a;
       border: 1px solid #333;
       color: white;
-      font-size: 14px;
-      padding: 8px 12px;
+      font-size: 13px;
+      padding: 6px 10px;
       border-radius: 8px;
       outline: none;
       flex-grow: 1;
       margin-left: 10px;
+      transition: border-color 0.2s;
+    }
+
+    .input-func.error {
+      border-color: var(--accent-red);
+      color: var(--accent-red);
     }
 
     .select-func {
@@ -128,12 +165,12 @@
     .slider-container {
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 14px;
     }
 
     .slider-wrapper {
       flex-grow: 1;
-      margin: 0 15px;
+      margin: 0 10px;
       display: flex;
       align-items: center;
     }
@@ -146,12 +183,12 @@
     
     input[type=range]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      height: 20px;
-      width: 8px;
+      height: 18px;
+      width: 6px;
       border-radius: 2px;
       background: #ffffff;
       cursor: pointer;
-      margin-top: -9px;
+      margin-top: -8px;
     }
     
     input[type=range]::-webkit-slider-runnable-track {
@@ -163,36 +200,70 @@
     
     .val-box {
       background-color: #2a2a2a;
-      padding: 8px 0;
-      border-radius: 12px;
-      width: 45px;
+      padding: 6px 0;
+      border-radius: 10px;
+      width: 40px;
       text-align: center;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 500;
+    }
+
+    /* Tryb Fullscreen / Watch Focus */
+    body.fullscreen-mode .controls-panel,
+    body.fullscreen-mode .info-section,
+    body.fullscreen-mode .header {
+      display: none !important;
+    }
+
+    body.fullscreen-mode {
+      background-color: var(--bg-graph);
+      padding: 0;
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    body.fullscreen-mode .app-container {
+      max-width: 100% !important;
+      height: 100vh;
+      padding: 0;
+      margin: 0;
+      justify-content: center;
+    }
+
+    body.fullscreen-mode .graph-container {
+      width: 100vw;
+      height: 100vh;
+      aspect-ratio: unset;
+      border-radius: 0;
+      margin: 0;
     }
   </style>
 </head>
 <body>
 
-<div class="app-container">
+<div class="app-container" id="app-container">
   <div class="header">
     <div style="cursor:pointer">←</div>
-    <div style="font-weight:600; font-size:16px;">Wykresy funkcji</div>
-    <div style="cursor:pointer">🔗</div>
+    <div style="font-weight:600; font-size:15px;">Wykresy WATCH</div>
+    <div style="cursor:pointer; font-size:18px;" id="btn-fullscreen" title="Pełny ekran / Tryb Zegarka">⛶</div>
   </div>
 
-  <div class="graph-container">
+  <div class="graph-container" id="graph-container">
     <canvas id="graph" width="400" height="400"></canvas>
+    <div class="btn-center" id="btn-center" title="Wyśrodkuj">⌖</div>
   </div>
 
   <div class="info-section">
     <div class="info-block">
       <span class="info-label">Wzór g(x)</span>
-      <span class="info-value" id="gx-formula">g(x) = (x - 1.9) - 1.0</span>
+      <span class="info-value" id="gx-formula">g(x) = ...</span>
     </div>
-    <div class="info-block" style="border-left: 1px solid #333; padding-left: 15px;">
+    <div class="info-block" style="border-left: 1px solid #333; padding-left: 12px;">
       <span class="info-label">Operacja</span>
-      <span class="info-value" id="vector-info">Wektor [1.9, -1.0]</span>
+      <span class="info-value" id="vector-info">Wektor</span>
     </div>
   </div>
 
@@ -200,35 +271,35 @@
     <div class="control-row">
       <span class="control-label">Tryb</span>
       <select id="transform-type" class="select-func">
-        <option value="vector">Przesunięcie o wektor [p, q]</option>
-        <option value="symX">Symetria osi OX: -f(x)</option>
-        <option value="symY">Symetria osi OY: f(-x)</option>
+        <option value="vector">Przesunięcie wektor [p, q]</option>
+        <option value="symX">Symetria OX: -f(x)</option>
+        <option value="symY">Symetria OY: f(-x)</option>
         <option value="sym00">Symetria (0,0): -f(-x)</option>
-        <option value="absF">Wartość bezwzgl. funkcji: |f(x)|</option>
-        <option value="absX">Wartość bezwzgl. arg.: f(|x|)</option>
+        <option value="absF">Wartość bezwzgl: |f(x)|</option>
+        <option value="absX">Wartość bezwzgl arg: f(|x|)</option>
       </select>
     </div>
 
     <div class="control-row">
       <span class="control-label">f(x) =</span>
-      <input type="text" class="input-func" id="fx-input" value="x+2">
+      <input type="text" class="input-func" id="fx-input" value="x^2">
     </div>
     
     <div id="vector-sliders" class="slider-container">
       <div class="control-row">
-        <span class="control-label">Przesunięcie X (p)</span>
+        <span class="control-label">Przes. X (p)</span>
         <div class="slider-wrapper">
-          <input type="range" id="p-slider" min="-5" max="5" step="0.1" value="1.9">
+          <input type="range" id="p-slider" min="-10" max="10" step="0.5" value="2">
         </div>
-        <div class="val-box" id="p-val">1.9</div>
+        <div class="val-box" id="p-val">2</div>
       </div>
 
       <div class="control-row">
-        <span class="control-label">Przesunięcie Y (q)</span>
+        <span class="control-label">Przes. Y (q)</span>
         <div class="slider-wrapper">
-          <input type="range" id="q-slider" min="-5" max="5" step="0.1" value="-1">
+          <input type="range" id="q-slider" min="-10" max="10" step="0.5" value="-3">
         </div>
-        <div class="val-box" id="q-val">-1</div>
+        <div class="val-box" id="q-val">-3</div>
       </div>
     </div>
   </div>
@@ -247,45 +318,103 @@
     qVal: document.getElementById('q-val'),
     formula: document.getElementById('gx-formula'),
     info: document.getElementById('vector-info'),
-    slidersDiv: document.getElementById('vector-sliders')
+    slidersDiv: document.getElementById('vector-sliders'),
+    btnCenter: document.getElementById('btn-center'),
+    btnFullscreen: document.getElementById('btn-fullscreen'),
+    graphContainer: document.getElementById('graph-container')
   };
 
-  const config = {
-    scale: 40,
-    originX: canvas.width / 2,
-    originY: canvas.height / 2
+  let view = {
+    offsetX: canvas.width / 2,
+    offsetY: canvas.height / 2,
+    scale: 40
   };
 
-  function drawGrid() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.lineWidth = 1;
-    
-    ctx.strokeStyle = '#2a2d3a';
-    for(let i = 0; i <= canvas.width; i += config.scale) {
-      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
-    }
-    
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(0, config.originY); ctx.lineTo(canvas.width, config.originY); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(config.originX, 0); ctx.lineTo(config.originX, canvas.height); ctx.stroke();
+  let isDragging = false;
+  let lastX = 0, lastY = 0;
 
-    ctx.fillStyle = '#888888';
-    ctx.font = '12px system-ui';
-    for(let i = -5; i <= 5; i++) {
-      if (i !== 0) {
-        ctx.fillText(i, config.originX + i * config.scale - 4, config.originY + 16);
-        ctx.fillText(i, config.originX - 16, config.originY - i * config.scale + 4);
+  function resizeCanvasToDisplay() {
+    const rect = els.graphContainer.getBoundingClientRect();
+    if (canvas.width !== rect.width || canvas.height !== rect.height) {
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      if(view.offsetX === 200 && view.offsetY === 200) { // Default init
+        view.offsetX = canvas.width / 2;
+        view.offsetY = canvas.height / 2;
       }
     }
   }
 
   function evaluateMath(expression, xVal) {
     try {
-      return math.evaluate(expression, { x: xVal });
+      let res = math.evaluate(expression, { x: xVal });
+      els.fx.classList.remove('error');
+      return res;
     } catch(e) {
+      els.fx.classList.add('error');
       return null;
+    }
+  }
+
+  function getGridStep(scale) {
+    const unitSize = scale;
+    if (unitSize > 100) return 0.5;
+    if (unitSize > 40) return 1;
+    if (unitSize > 15) return 2;
+    if (unitSize > 5) return 5;
+    return 10;
+  }
+
+  function drawGrid() {
+    resizeCanvasToDisplay();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const step = getGridStep(view.scale);
+    
+    ctx.strokeStyle = '#2a2d3a';
+    ctx.lineWidth = 1;
+    
+    let startX = Math.floor(-view.offsetX / view.scale / step) * step;
+    let endX = Math.ceil((canvas.width - view.offsetX) / view.scale / step) * step;
+    
+    for(let i = startX; i <= endX; i += step) {
+      let px = view.offsetX + i * view.scale;
+      ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, canvas.height); ctx.stroke();
+    }
+
+    let startY = Math.floor(-(canvas.height - view.offsetY) / view.scale / step) * step;
+    let endY = Math.ceil(view.offsetY / view.scale / step) * step;
+
+    for(let i = startY; i <= endY; i += step) {
+      let py = view.offsetY - i * view.scale;
+      ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(canvas.width, py); ctx.stroke();
+    }
+    
+    // Osie
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, view.offsetY); ctx.lineTo(canvas.width, view.offsetY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(view.offsetX, 0); ctx.lineTo(view.offsetX, canvas.height); ctx.stroke();
+
+    // Numery na osiach (ukrywamy w trybie ekstremalnie małym, np. na zegarku, żeby nie zaciemniać)
+    if (canvas.width > 200) {
+      ctx.fillStyle = '#888888';
+      ctx.font = '11px system-ui';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      
+      for(let i = startX; i <= endX; i += step) {
+        if (i !== 0 && Math.abs(i) > 0.01) {
+          ctx.fillText(Number(i.toFixed(1)), view.offsetX + i * view.scale, view.offsetY + 6);
+        }
+      }
+      
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      for(let i = startY; i <= endY; i += step) {
+        if (i !== 0 && Math.abs(i) > 0.01) {
+          ctx.fillText(Number(i.toFixed(1)), view.offsetX - 6, view.offsetY - i * view.scale);
+        }
+      }
     }
   }
 
@@ -297,75 +426,63 @@
     const p = parseFloat(els.p.value);
     const q = parseFloat(els.q.value);
 
-    // Rysowanie f(x) (przerywana biała)
-    ctx.strokeStyle = '#ffffff';
-    ctx.setLineDash([5, 5]);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    // 1. Wykres f(x) (biała przerywana)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.setLineDash([4, 4]);
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    for(let px = 0; px < canvas.width; px++) {
-      let x = (px - config.originX) / config.scale;
+    let firstPointF = true;
+    for(let px = 0; px <= canvas.width; px += 2) {
+      let x = (px - view.offsetX) / view.scale;
       let y = evaluateMath(fStr, x);
-      if(y !== null && !isNaN(y)) {
-        let py = config.originY - y * config.scale;
-        px === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-      }
+      if(y !== null && !isNaN(y) && isFinite(y)) {
+        let py = view.offsetY - y * view.scale;
+        if (firstPointF || py < -5000 || py > 5000) { ctx.moveTo(px, py); firstPointF = false; } 
+        else ctx.lineTo(px, py);
+      } else { firstPointF = true; }
     }
     ctx.stroke();
 
-    // Rysowanie g(x) (ciągła niebieska)
+    // 2. Wykres g(x) (niebieska ciągła)
     ctx.strokeStyle = '#3b82f6';
     ctx.setLineDash([]);
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    let firstPoint = true;
+    let firstPointG = true;
     
-    for(let px = 0; px < canvas.width; px++) {
-      let x = (px - config.originX) / config.scale;
+    for(let px = 0; px <= canvas.width; px += 2) {
+      let x = (px - view.offsetX) / view.scale;
       let y = null;
 
       try {
-        // Implementacja matematyczna przekształceń krok po kroku:
         if (mode === 'vector') {
-          // y = f(x - p) + q
           let f_val = evaluateMath(fStr, x - p);
           if (f_val !== null) y = f_val + q;
         } 
         else if (mode === 'symX') {
-          // y = -f(x)
           let f_val = evaluateMath(fStr, x);
           if (f_val !== null) y = -f_val;
         } 
-        else if (mode === 'symY') {
-          // y = f(-x)
-          y = evaluateMath(fStr, -x);
-        } 
+        else if (mode === 'symY') { y = evaluateMath(fStr, -x); } 
         else if (mode === 'sym00') {
-          // y = -f(-x)
           let f_val = evaluateMath(fStr, -x);
           if (f_val !== null) y = -f_val;
         } 
         else if (mode === 'absF') {
-          // y = |f(x)|
           let f_val = evaluateMath(fStr, x);
           if (f_val !== null) y = Math.abs(f_val);
         } 
-        else if (mode === 'absX') {
-          // y = f(|x|)
-          y = evaluateMath(fStr, Math.abs(x));
-        }
+        else if (mode === 'absX') { y = evaluateMath(fStr, Math.abs(x)); }
       } catch(e) {}
 
-      if(y !== null && !isNaN(y)) {
-        let py = config.originY - y * config.scale;
-        if (firstPoint || py < -1000 || py > 2000) { // Zapobieganie błędom rysowania poza canvasem
-          ctx.moveTo(px, py);
-          firstPoint = false;
-        } else {
-          ctx.lineTo(px, py);
-        }
-      } else {
-        firstPoint = true; // Przerwanie linii (np. dziedzina logarytmu)
-      }
+      if(y !== null && !isNaN(y) && isFinite(y)) {
+        let py = view.offsetY - y * view.scale;
+        if (firstPointG || py < -5000 || py > 5000) { ctx.moveTo(px, py); firstPointG = false; } 
+        else { ctx.lineTo(px, py); }
+      } else { firstPointG = true; }
     }
     ctx.stroke();
   }
@@ -382,39 +499,108 @@
       els.pVal.innerText = p;
       els.qVal.innerText = q;
 
-      let pStr = p >= 0 ? `- ${p}` : `+ ${Math.abs(p)}`;
-      let qStr = q >= 0 ? `+ ${q}` : `- ${Math.abs(q)}`;
-      let replacedX = `(x ${pStr})`;
+      let pStr = p > 0 ? `- ${p}` : p < 0 ? `+ ${Math.abs(p)}` : '';
+      let qStr = q > 0 ? `+ ${q}` : q < 0 ? `- ${Math.abs(q)}` : '';
+      let replacedX = p === 0 ? 'x' : `(x ${pStr})`;
       
       els.formula.innerText = `g(x) = ${fStr.replace(/x/g, replacedX)} ${qStr}`;
-      els.info.innerText = `Wektor [${p.toFixed(1)}, ${q.toFixed(1)}]`;
+      els.info.innerText = `Wektor [${p}, ${q}]`;
     } else {
-      els.slidersDiv.style.display = 'none'; // Ukrywamy suwaki wektora
+      els.slidersDiv.style.display = 'none'; 
       
       if (mode === 'symX') {
-        els.formula.innerText = `g(x) = -(${fStr})`;
-        els.info.innerText = `Symetria osi OX`;
+        els.formula.innerText = `g(x) = -(${fStr})`; els.info.innerText = `Symetria OX`;
       } else if (mode === 'symY') {
-        els.formula.innerText = `g(x) = ${fStr.replace(/x/g, '(-x)')}`;
-        els.info.innerText = `Symetria osi OY`;
+        els.formula.innerText = `g(x) = ${fStr.replace(/x/g, '(-x)')}`; els.info.innerText = `Symetria OY`;
       } else if (mode === 'sym00') {
-        els.formula.innerText = `g(x) = -(${fStr.replace(/x/g, '(-x)')})`;
-        els.info.innerText = `Symetria punktowa (0,0)`;
+        els.formula.innerText = `g(x) = -(${fStr.replace(/x/g, '(-x)')})`; els.info.innerText = `Symetria (0,0)`;
       } else if (mode === 'absF') {
-        els.formula.innerText = `g(x) = |${fStr}|`;
-        els.info.innerText = `Na całej funkcji`;
+        els.formula.innerText = `g(x) = |${fStr}|`; els.info.innerText = `Moduł z funkcji`;
       } else if (mode === 'absX') {
-        els.formula.innerText = `g(x) = ${fStr.replace(/x/g, '|x|')}`;
-        els.info.innerText = `Na argumencie`;
+        els.formula.innerText = `g(x) = ${fStr.replace(/x/g, '|x|')}`; els.info.innerText = `Moduł z argumentu`;
       }
     }
+    drawGraph();
+  }
+
+  // Obsługa dotyku / myszy do przesuwania wykresu
+  function getPos(e) {
+    if (e.touches) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    return { x: e.clientX, y: e.clientY };
+  }
+
+  function startDrag(e) {
+    isDragging = true;
+    let pos = getPos(e);
+    lastX = pos.x; lastY = pos.y;
+  }
+
+  function doDrag(e) {
+    if (!isDragging) return;
+    e.preventDefault();
+    let pos = getPos(e);
+    view.offsetX += (pos.x - lastX);
+    view.offsetY += (pos.y - lastY);
+    lastX = pos.x; lastY = pos.y;
+    drawGraph();
+  }
+
+  function endDrag() { isDragging = false; }
+
+  function doZoom(e) {
+    e.preventDefault();
+    const zoomIntensity = 0.1;
+    const wheel = e.deltaY < 0 ? 1 : -1;
+    const zoomFactor = Math.exp(wheel * zoomIntensity);
+    
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    view.offsetX = mouseX - (mouseX - view.offsetX) * zoomFactor;
+    view.offsetY = mouseY - (mouseY - view.offsetY) * zoomFactor;
+    view.scale *= zoomFactor;
+    
+    if(view.scale < 5) view.scale = 5;
+    if(view.scale > 500) view.scale = 500;
 
     drawGraph();
   }
 
-  // Eventy
+  canvas.addEventListener('mousedown', startDrag);
+  canvas.addEventListener('mousemove', doDrag);
+  window.addEventListener('mouseup', endDrag);
+
+  canvas.addEventListener('touchstart', startDrag, {passive: false});
+  canvas.addEventListener('touchmove', doDrag, {passive: false});
+  window.addEventListener('touchend', endDrag);
+
+  canvas.addEventListener('wheel', doZoom, {passive: false});
+
+  // Przycisk centrowania
+  els.btnCenter.addEventListener('click', () => {
+    view.offsetX = canvas.width / 2;
+    view.offsetY = canvas.height / 2;
+    view.scale = 40;
+    drawGraph();
+  });
+
+  // 🔥 Przycisk Fullscreen / Tryb Zegarka
+  els.btnFullscreen.addEventListener('click', () => {
+    document.body.classList.toggle('fullscreen-mode');
+    setTimeout(() => {
+      view.offsetX = canvas.width / 2;
+      view.offsetY = canvas.height / 2;
+      drawGraph();
+    }, 50);
+  });
+
   [els.fx, els.type, els.p, els.q].forEach(el => el.addEventListener('input', updateUI));
-  els.type.addEventListener('change', updateUI); // Obsługa rozwijanego menu
+  els.type.addEventListener('change', updateUI); 
+
+  window.addEventListener('resize', () => {
+    drawGraph();
+  });
 
   updateUI();
 </script>

@@ -316,7 +316,7 @@
 
     <div class="control-row">
       <span class="control-label">f(x) =</span>
-      <input type="text" class="input-func" id="fx-input" value="x+2">
+      <input type="text" class="input-func" id="fx-input" value="x + 2">
     </div>
     
     <div id="vector-sliders" class="slider-container">
@@ -361,17 +361,16 @@
     graphContainer: document.getElementById('graph-container')
   };
 
-  // Skala początkowa: 1 kratka = 20 pikseli, co daje ładny widok od ok. -10 do 10 na ekranie
   let view = {
     offsetX: 0,
     offsetY: 0,
-    scale: 20 
+    scale: 30 // 1 kratka = 30 pikseli, co idealnie mieści liczby całkowite co 1 jednostkę
   };
 
   let isDragging = false;
   let lastX = 0, lastY = 0;
   let initialPinchDist = null;
-  let initialScale = 20;
+  let initialScale = 30;
 
   function resizeCanvasToDisplay() {
     const rect = els.graphContainer.getBoundingClientRect();
@@ -387,7 +386,9 @@
 
   function evaluateMath(expression, xVal) {
     try {
-      let res = math.evaluate(expression, { x: xVal });
+      // Automatyczna zamiana przecinka na kropkę, żeby uniknąć błędów składni
+      let sanitizedExpr = expression.replace(/,/g, '.');
+      let res = math.evaluate(sanitizedExpr, { x: xVal });
       els.fx.classList.remove('error');
       return res;
     } catch(e) {
@@ -396,26 +397,12 @@
     }
   }
 
-  // Inteligentny krok siatki (pilnuje, żeby liczby nie nachodziły na siebie)
-  function getGridStep(scale) {
-    const minPixels = 50;
-    let rawStep = minPixels / scale;
-    let magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
-    let residual = rawStep / magnitude;
-    
-    let step = 1;
-    if (residual > 5) step = 10 * magnitude;
-    else if (residual > 2) step = 5 * magnitude;
-    else if (residual > 1) step = 2 * magnitude;
-    else step = magnitude;
-
-    return Math.max(1, step); // Wymuszamy, aby kroki były całkowitymi wartościami (np. co 1, co 5, co 10)
-  }
-
   function drawGrid() {
     resizeCanvasToDisplay();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const step = getGridStep(view.scale);
+    
+    // Wymuszenie kroku siatki dokładnie co 1 jednostkę
+    const step = 1; 
     
     ctx.strokeStyle = '#2a2d3a';
     ctx.lineWidth = 1;
@@ -442,37 +429,37 @@
     ctx.beginPath(); ctx.moveTo(0, view.offsetY); ctx.lineTo(canvas.width, view.offsetY); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(view.offsetX, 0); ctx.lineTo(view.offsetX, canvas.height); ctx.stroke();
 
-    // Rysowanie wartości (podpisów) na punktach osi
-    if (canvas.width > 150) {
+    // Rysowanie wartości na każdym punkcie (co 1 kratkę) jeżeli skala na to pozwala
+    if (canvas.width > 150 && view.scale >= 15) {
       ctx.fillStyle = '#aaaaaa';
-      ctx.font = '11px system-ui';
+      ctx.font = '10px system-ui';
       
-      // Podpisy na osi X
+      // Podpisy na osi X (co 1 jednostkę)
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       for(let i = startX; i <= endX; i += step) {
-        if (Math.abs(i) > 0.001) {
+        if (i !== 0) {
           let px = view.offsetX + i * view.scale;
-          let py = Math.min(Math.max(view.offsetY + 5, 10), canvas.height - 20); // Trzyma etykietę wewnątrz ekranu
+          let py = Math.min(Math.max(view.offsetY + 4, 5), canvas.height - 15);
           ctx.fillText(i, px, py);
         }
       }
       
-      // Podpisy na osi Y
+      // Podpisy na osi Y (co 1 jednostkę)
       ctx.textAlign = 'right';
       ctx.textBaseline = 'middle';
       for(let i = startY; i <= endY; i += step) {
-        if (Math.abs(i) > 0.001) {
+        if (i !== 0) {
           let py = view.offsetY - i * view.scale;
-          let px = Math.min(Math.max(view.offsetX - 8, 20), canvas.width - 10);
+          let px = Math.min(Math.max(view.offsetX - 6, 15), canvas.width - 5);
           ctx.fillText(i, px, py);
         }
       }
       
-      // Zero w rogu osi
+      // Zero
       ctx.textAlign = 'right';
       ctx.textBaseline = 'top';
-      ctx.fillText('0', view.offsetX - 5, view.offsetY + 5);
+      ctx.fillText('0', view.offsetX - 4, view.offsetY + 4);
     }
   }
 
@@ -589,8 +576,8 @@
     view.offsetY = centerY - (centerY - view.offsetY) * factor;
     view.scale *= factor;
 
-    if(view.scale < 5) view.scale = 5;
-    if(view.scale > 500) view.scale = 500;
+    if(view.scale < 10) view.scale = 10;
+    if(view.scale > 200) view.scale = 200;
 
     drawGraph();
   }
@@ -641,7 +628,7 @@
       let currentDist = getTouchDistance(e.touches);
       let factor = currentDist / initialPinchDist;
       let newScale = initialScale * factor;
-      if (newScale >= 5 && newScale <= 500) {
+      if (newScale >= 10 && newScale <= 200) {
         view.scale = newScale;
         drawGraph();
       }
@@ -667,8 +654,8 @@
     view.offsetY = mouseY - (mouseY - view.offsetY) * zoomFactor;
     view.scale *= zoomFactor;
     
-    if(view.scale < 5) view.scale = 5;
-    if(view.scale > 500) view.scale = 500;
+    if(view.scale < 10) view.scale = 10;
+    if(view.scale > 200) view.scale = 200;
 
     drawGraph();
   }, {passive: false});
@@ -681,7 +668,7 @@
     e.stopPropagation();
     view.offsetX = canvas.width / 2;
     view.offsetY = canvas.height / 2;
-    view.scale = 20; // Reset do domyślnej skali (1 kratka)
+    view.scale = 30; // Reset do idealnej domyślnej skali
     drawGraph();
   });
 

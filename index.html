@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Kalkulator Przekształceń Funkcji WATCH</title>
+  <title>Kalkulator Przekształceń Funkcji WATCH PRO</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
   <style>
     :root {
@@ -71,12 +71,18 @@
       cursor: grabbing;
     }
 
-    .btn-center {
+    /* Przyciski kontrolne na wykresie */
+    .graph-controls {
       position: absolute;
       bottom: 10px;
       right: 10px;
-      background: rgba(42, 45, 58, 0.8);
-      border: 1px solid #333;
+      display: flex;
+      gap: 6px;
+    }
+
+    .graph-btn {
+      background: rgba(42, 45, 58, 0.85);
+      border: 1px solid #444;
       color: white;
       width: 34px;
       height: 34px;
@@ -86,7 +92,13 @@
       justify-content: center;
       cursor: pointer;
       font-size: 16px;
+      font-weight: bold;
       backdrop-filter: blur(4px);
+      user-select: none;
+    }
+
+    .graph-btn:active {
+      background: rgba(59, 130, 246, 0.8);
     }
     
     .info-section {
@@ -253,7 +265,13 @@
 
   <div class="graph-container" id="graph-container">
     <canvas id="graph" width="400" height="400"></canvas>
-    <div class="btn-center" id="btn-center" title="Wyśrodkuj">⌖</div>
+    
+    <!-- Przyciski nawigacyjne na wykresie -->
+    <div class="graph-controls">
+      <div class="graph-btn" id="btn-zoom-in" title="Przybliż">+</div>
+      <div class="graph-btn" id="btn-zoom-out" title="Oddal">-</div>
+      <div class="graph-btn" id="btn-center" title="Wyśrodkuj">⌖</div>
+    </div>
   </div>
 
   <div class="info-section">
@@ -320,6 +338,8 @@
     info: document.getElementById('vector-info'),
     slidersDiv: document.getElementById('vector-sliders'),
     btnCenter: document.getElementById('btn-center'),
+    btnZoomIn: document.getElementById('btn-zoom-in'),
+    btnZoomOut: document.getElementById('btn-zoom-out'),
     btnFullscreen: document.getElementById('btn-fullscreen'),
     graphContainer: document.getElementById('graph-container')
   };
@@ -338,7 +358,7 @@
     if (canvas.width !== rect.width || canvas.height !== rect.height) {
       canvas.width = rect.width;
       canvas.height = rect.height;
-      if(view.offsetX === 200 && view.offsetY === 200) { // Default init
+      if(view.offsetX === 200 && view.offsetY === 200) {
         view.offsetX = canvas.width / 2;
         view.offsetY = canvas.height / 2;
       }
@@ -395,7 +415,6 @@
     ctx.beginPath(); ctx.moveTo(0, view.offsetY); ctx.lineTo(canvas.width, view.offsetY); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(view.offsetX, 0); ctx.lineTo(view.offsetX, canvas.height); ctx.stroke();
 
-    // Numery na osiach (ukrywamy w trybie ekstremalnie małym, np. na zegarku, żeby nie zaciemniać)
     if (canvas.width > 200) {
       ctx.fillStyle = '#888888';
       ctx.font = '11px system-ui';
@@ -523,6 +542,21 @@
     drawGraph();
   }
 
+  // Funkcja zmiany zoomu za pomocą przycisków
+  function zoomByFactor(factor) {
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    view.offsetX = centerX - (centerX - view.offsetX) * factor;
+    view.offsetY = centerY - (centerY - view.offsetY) * factor;
+    view.scale *= factor;
+
+    if(view.scale < 5) view.scale = 5;
+    if(view.scale > 500) view.scale = 500;
+
+    drawGraph();
+  }
+
   // Obsługa dotyku / myszy do przesuwania wykresu
   function getPos(e) {
     if (e.touches) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -577,15 +611,18 @@
 
   canvas.addEventListener('wheel', doZoom, {passive: false});
 
-  // Przycisk centrowania
-  els.btnCenter.addEventListener('click', () => {
+  // Obsługa przycisków interfejsu
+  els.btnZoomIn.addEventListener('click', (e) => { e.stopPropagation(); zoomByFactor(1.35); });
+  els.btnZoomOut.addEventListener('click', (e) => { e.stopPropagation(); zoomByFactor(1 / 1.35); });
+
+  els.btnCenter.addEventListener('click', (e) => {
+    e.stopPropagation();
     view.offsetX = canvas.width / 2;
     view.offsetY = canvas.height / 2;
     view.scale = 40;
     drawGraph();
   });
 
-  // 🔥 Przycisk Fullscreen / Tryb Zegarka
   els.btnFullscreen.addEventListener('click', () => {
     document.body.classList.toggle('fullscreen-mode');
     setTimeout(() => {

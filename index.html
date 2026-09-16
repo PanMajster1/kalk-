@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kalkulator Przekształceń Funkcji</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+  <style>
+    :root {
+      --bg-main: #0a0a0a;
+      --bg-panel: #1e1e1e;
+      --bg-graph: #13151c;
+      --text-main: #ffffff;
+      --text-muted: #888888;
+      --accent-blue: #3b82f6;
+      --grid-line: #2a2d3a;
+    }
+    
+    * { box-sizing: border-box; }
+    
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    
+    .app-container {
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      font-size: 20px;
+    }
+    
+    .graph-container {
+      width: 100%;
+      aspect-ratio: 1;
+      background-color: var(--bg-graph);
+      border-radius: 12px;
+      margin-bottom: 24px;
+      position: relative;
+    }
+    
+    canvas {
+      width: 100%;
+      height: 100%;
+      border-radius: 12px;
+    }
+    
+    .info-section {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 30px;
+      padding: 0 10px;
+    }
+    
+    .info-block {
+      display: flex;
+      flex-direction: column;
+      width: 50%;
+    }
+    
+    .info-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+    
+    .info-value {
+      font-size: 14px;
+      font-weight: 600;
+      word-wrap: break-word;
+    }
+    
+    .controls-panel {
+      background-color: var(--bg-panel);
+      border-radius: 24px;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .control-label {
+      width: 90px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+    
+    .input-func, .select-func {
+      background: #2a2a2a;
+      border: 1px solid #333;
+      color: white;
+      font-size: 14px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      outline: none;
+      flex-grow: 1;
+      margin-left: 10px;
+    }
+
+    .select-func {
+      cursor: pointer;
+      appearance: none;
+    }
+    
+    .slider-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .slider-wrapper {
+      flex-grow: 1;
+      margin: 0 15px;
+      display: flex;
+      align-items: center;
+    }
+    
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      background: transparent;
+    }
+    
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 20px;
+      width: 8px;
+      border-radius: 2px;
+      background: #ffffff;
+      cursor: pointer;
+      margin-top: -9px;
+    }
+    
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 2px;
+      background: #555;
+      border-radius: 1px;
+    }
+    
+    .val-box {
+      background-color: #2a2a2a;
+      padding: 8px 0;
+      border-radius: 12px;
+      width: 45px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <div class="header">
+    <div style="cursor:pointer">←</div>
+    <div style="font-weight:600; font-size:16px;">Wykresy funkcji</div>
+    <div style="cursor:pointer">🔗</div>
+  </div>
+
+  <div class="graph-container">
+    <canvas id="graph" width="400" height="400"></canvas>
+  </div>
+
+  <div class="info-section">
+    <div class="info-block">
+      <span class="info-label">Wzór g(x)</span>
+      <span class="info-value" id="gx-formula">g(x) = (x - 1.9) - 1.0</span>
+    </div>
+    <div class="info-block" style="border-left: 1px solid #333; padding-left: 15px;">
+      <span class="info-label">Operacja</span>
+      <span class="info-value" id="vector-info">Wektor [1.9, -1.0]</span>
+    </div>
+  </div>
+
+  <div class="controls-panel">
+    <div class="control-row">
+      <span class="control-label">Tryb</span>
+      <select id="transform-type" class="select-func">
+        <option value="vector">Przesunięcie o wektor [p, q]</option>
+        <option value="symX">Symetria osi OX: -f(x)</option>
+        <option value="symY">Symetria osi OY: f(-x)</option>
+        <option value="sym00">Symetria (0,0): -f(-x)</option>
+        <option value="absF">Wartość bezwzgl. funkcji: |f(x)|</option>
+        <option value="absX">Wartość bezwzgl. arg.: f(|x|)</option>
+      </select>
+    </div>
+
+    <div class="control-row">
+      <span class="control-label">f(x) =</span>
+      <input type="text" class="input-func" id="fx-input" value="x+2">
+    </div>
+    
+    <div id="vector-sliders" class="slider-container">
+      <div class="control-row">
+        <span class="control-label">Przesunięcie X (p)</span>
+        <div class="slider-wrapper">
+          <input type="range" id="p-slider" min="-5" max="5" step="0.1" value="1.9">
+        </div>
+        <div class="val-box" id="p-val">1.9</div>
+      </div>
+
+      <div class="control-row">
+        <span class="control-label">Przesunięcie Y (q)</span>
+        <div class="slider-wrapper">
+          <input type="range" id="q-slider" min="-5" max="5" step="0.1" value="-1">
+        </div>
+        <div class="val-box" id="q-val">-1</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('graph');
+  const ctx = canvas.getContext('2d');
+  
+  const els = {
+    fx: document.getElementById('fx-input'),
+    type: document.getElementById('transform-type'),
+    p: document.getElementById('p-slider'),
+    q: document.getElementById('q-slider'),
+    pVal: document.getElementById('p-val'),
+    qVal: document.getElementById('q-val'),
+    formula: document.getElementById('gx-formula'),
+    info: document.getElementById('vector-info'),
+    slidersDiv: document.getElementById('vector-sliders')
+  };
+
+  const config = {
+    scale: 40,
+    originX: canvas.width / 2,
+    originY: canvas.height / 2
+  };
+
+  function drawGrid() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.lineWidth = 1;
+    
+    ctx.strokeStyle = '#2a2d3a';
+    for(let i = 0; i <= canvas.width; i += config.scale) {
+      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+    }
+    
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, config.originY); ctx.lineTo(canvas.width, config.originY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(config.originX, 0); ctx.lineTo(config.originX, canvas.height); ctx.stroke();
+
+    ctx.fillStyle = '#888888';
+    ctx.font = '12px system-ui';
+    for(let i = -5; i <= 5; i++) {
+      if (i !== 0) {
+        ctx.fillText(i, config.originX + i * config.scale - 4, config.originY + 16);
+        ctx.fillText(i, config.originX - 16, config.originY - i * config.scale + 4);
+      }
+    }
+  }
+
+  function evaluateMath(expression, xVal) {
+    try {
+      return math.evaluate(expression, { x: xVal });
+    } catch(e) {
+      return null;
+    }
+  }
+
+  function drawGraph() {
+    drawGrid();
+    
+    const fStr = els.fx.value;
+    const mode = els.type.value;
+    const p = parseFloat(els.p.value);
+    const q = parseFloat(els.q.value);
+
+    // Rysowanie f(x) (przerywana biała)
+    ctx.strokeStyle = '#ffffff';
+    ctx.setLineDash([5, 5]);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for(let px = 0; px < canvas.width; px++) {
+      let x = (px - config.originX) / config.scale;
+      let y = evaluateMath(fStr, x);
+      if(y !== null && !isNaN(y)) {
+        let py = config.originY - y * config.scale;
+        px === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+    }
+    ctx.stroke();
+
+    // Rysowanie g(x) (ciągła niebieska)
+    ctx.strokeStyle = '#3b82f6';
+    ctx.setLineDash([]);
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    let firstPoint = true;
+    
+    for(let px = 0; px < canvas.width; px++) {
+      let x = (px - config.originX) / config.scale;
+      let y = null;
+
+      try {
+        // Implementacja matematyczna przekształceń krok po kroku:
+        if (mode === 'vector') {
+          // y = f(x - p) + q
+          let f_val = evaluateMath(fStr, x - p);
+          if (f_val !== null) y = f_val + q;
+        } 
+        else if (mode === 'symX') {
+          // y = -f(x)
+          let f_val = evaluateMath(fStr, x);
+          if (f_val !== null) y = -f_val;
+        } 
+        else if (mode === 'symY') {
+          // y = f(-x)
+          y = evaluateMath(fStr, -x);
+        } 
+        else if (mode === 'sym00') {
+          // y = -f(-x)
+          let f_val = evaluateMath(fStr, -x);
+          if (f_val !== null) y = -f_val;
+        } 
+        else if (mode === 'absF') {
+          // y = |f(x)|
+          let f_val = evaluateMath(fStr, x);
+          if (f_val !== null) y = Math.abs(f_val);
+        } 
+        else if (mode === 'absX') {
+          // y = f(|x|)
+          y = evaluateMath(fStr, Math.abs(x));
+        }
+      } catch(e) {}
+
+      if(y !== null && !isNaN(y)) {
+        let py = config.originY - y * config.scale;
+        if (firstPoint || py < -1000 || py > 2000) { // Zapobieganie błędom rysowania poza canvasem
+          ctx.moveTo(px, py);
+          firstPoint = false;
+        } else {
+          ctx.lineTo(px, py);
+        }
+      } else {
+        firstPoint = true; // Przerwanie linii (np. dziedzina logarytmu)
+      }
+    }
+    ctx.stroke();
+  }
+
+  function updateUI() {
+    const mode = els.type.value;
+    const fStr = els.fx.value;
+    
+    if (mode === 'vector') {
+      els.slidersDiv.style.display = 'flex';
+      const p = parseFloat(els.p.value);
+      const q = parseFloat(els.q.value);
+      
+      els.pVal.innerText = p;
+      els.qVal.innerText = q;
+
+      let pStr = p >= 0 ? `- ${p}` : `+ ${Math.abs(p)}`;
+      let qStr = q >= 0 ? `+ ${q}` : `- ${Math.abs(q)}`;
+      let replacedX = `(x ${pStr})`;
+      
+      els.formula.innerText = `g(x) = ${fStr.replace(/x/g, replacedX)} ${qStr}`;
+      els.info.innerText = `Wektor [${p.toFixed(1)}, ${q.toFixed(1)}]`;
+    } else {
+      els.slidersDiv.style.display = 'none'; // Ukrywamy suwaki wektora
+      
+      if (mode === 'symX') {
+        els.formula.innerText = `g(x) = -(${fStr})`;
+        els.info.innerText = `Symetria osi OX`;
+      } else if (mode === 'symY') {
+        els.formula.innerText = `g(x) = ${fStr.replace(/x/g, '(-x)')}`;
+        els.info.innerText = `Symetria osi OY`;
+      } else if (mode === 'sym00') {
+        els.formula.innerText = `g(x) = -(${fStr.replace(/x/g, '(-x)')})`;
+        els.info.innerText = `Symetria punktowa (0,0)`;
+      } else if (mode === 'absF') {
+        els.formula.innerText = `g(x) = |${fStr}|`;
+        els.info.innerText = `Na całej funkcji`;
+      } else if (mode === 'absX') {
+        els.formula.innerText = `g(x) = ${fStr.replace(/x/g, '|x|')}`;
+        els.info.innerText = `Na argumencie`;
+      }
+    }
+
+    drawGraph();
+  }
+
+  // Eventy
+  [els.fx, els.type, els.p, els.q].forEach(el => el.addEventListener('input', updateUI));
+  els.type.addEventListener('change', updateUI); // Obsługa rozwijanego menu
+
+  updateUI();
+</script>
+</body>
+</html>

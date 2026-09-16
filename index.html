@@ -71,7 +71,6 @@
       cursor: grabbing;
     }
 
-    /* Przyciski kontrolne w prawym dolnym rogu */
     .graph-controls {
       position: absolute;
       bottom: 10px;
@@ -81,7 +80,6 @@
       z-index: 10;
     }
 
-    /* Przycisk zamknięcia pełnego ekranu (widoczny tylko w trybie fullscreen) */
     .graph-exit-fs {
       position: absolute;
       top: 10px;
@@ -150,7 +148,7 @@
       display: flex;
       flex-direction: column;
       gap: 14px;
-      touch-action: auto; /* Pozwala na scrollowanie panelu */
+      touch-action: auto;
     }
     
     .control-row {
@@ -236,7 +234,6 @@
       font-weight: 500;
     }
 
-    /* Tryb Fullscreen / Watch Focus */
     body.fullscreen-mode .controls-panel,
     body.fullscreen-mode .info-section,
     body.fullscreen-mode .header {
@@ -276,20 +273,18 @@
   <div class="header">
     <div style="cursor:pointer">←</div>
     <div style="font-weight:600; font-size:15px;">Wykresy WATCH</div>
-    <div style="cursor:pointer; font-size:18px;" id="btn-fullscreen" title="Pełny ekran / Tryb Zegarka">⛶</div>
+    <div style="cursor:pointer; font-size:18px;" id="btn-fullscreen" title="Pełny ekran">⛶</div>
   </div>
 
   <div class="graph-container" id="graph-container">
     <canvas id="graph" width="400" height="400"></canvas>
     
-    <!-- Przyciski nawigacyjne w prawym dolnym rogu -->
     <div class="graph-controls">
       <div class="graph-btn" id="btn-zoom-in" title="Przybliż">+</div>
       <div class="graph-btn" id="btn-zoom-out" title="Oddal">-</div>
       <div class="graph-btn" id="btn-center" title="Wyśrodkuj">⌖</div>
     </div>
 
-    <!-- Przycisk wyjścia z pełnego ekranu (w prawym górnym rogu) -->
     <div class="graph-exit-fs">
       <div class="graph-btn" id="btn-exit-fs" title="Wyjdź z pełnego ekranu">✕</div>
     </div>
@@ -321,7 +316,7 @@
 
     <div class="control-row">
       <span class="control-label">f(x) =</span>
-      <input type="text" class="input-func" id="fx-input" value="x+20">
+      <input type="text" class="input-func" id="fx-input" value="x+2">
     </div>
     
     <div id="vector-sliders" class="slider-container">
@@ -396,7 +391,7 @@
     }
   }
 
-  // 🔥 Usprawniony Auto-Zoom (działa dla x+20, x^2 itp.)
+  // Poprawiony auto-zoom: automatycznie dopasowuje skalę do wpisanej funkcji
   function autoScaleIfNeeded() {
     resizeCanvasToDisplay();
     const fStr = els.fx.value;
@@ -404,10 +399,9 @@
     const p = parseFloat(els.p.value);
     const q = parseFloat(els.q.value);
 
-    let maxY = 0;
-    // Skanujemy wartości funkcji wzdłuż całej szerokości ekranu
-    for (let px = 0; px <= canvas.width; px += 10) {
-      let x = (px - view.offsetX) / view.scale;
+    let maxVal = 5;
+    for (let px = 0; px <= canvas.width; px += 20) {
+      let x = (px - (canvas.width / 2)) / 40;
       let y = null;
       try {
         if (mode === 'vector') {
@@ -430,25 +424,33 @@
       } catch(e) {}
 
       if (y !== null && !isNaN(y) && isFinite(y)) {
-        if (Math.abs(y) > maxY) maxY = Math.abs(y);
+        if (Math.abs(y) > maxVal) maxVal = Math.abs(y);
       }
     }
 
-    // Jeśli wykres wychodzi poza domyślny kadr, automatycznie dostosuj skalę
-    if (maxY > (canvas.height / 2) / view.scale * 0.8) {
-      let targetRange = Math.max(10, maxY * 1.3);
-      view.scale = (canvas.height / 2) / targetRange;
-      view.offsetY = canvas.height / 2; // Wycentruj pionowo
-    }
+    // Wyliczamy optymalną skalę, żeby wykres zajmował ok. 60-70% ekranu
+    let targetUnits = Math.max(5, maxVal * 1.5);
+    view.scale = (canvas.height / 2) / targetUnits;
+    view.offsetX = canvas.width / 2;
+    view.offsetY = canvas.height / 2;
   }
 
+  // Bezpieczny krok siatki zapobiegający nakładaniu się linii
   function getGridStep(scale) {
-    const unitSize = scale;
-    if (unitSize > 100) return 0.5;
-    if (unitSize > 40) return 1;
-    if (unitSize > 15) return 2;
-    if (unitSize > 5) return 5;
-    return 10;
+    const minPixelsBetweenLines = 40;
+    let rawStep = minPixelsBetweenLines / scale;
+    
+    let magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    let residual = rawStep / magnitude;
+    
+    let step = 1;
+    if (residual > 5) step = 10 * magnitude;
+    else if (residual > 2) step = 5 * magnitude;
+    else if (residual > 1) step = 2 * magnitude;
+    else step = magnitude;
+
+    if (step < 0.1) step = 0.1;
+    return step;
   }
 
   function drawGrid() {
@@ -475,29 +477,30 @@
       ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(canvas.width, py); ctx.stroke();
     }
     
-    // Osie
+    // Osie główne
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(0, view.offsetY); ctx.lineTo(canvas.width, view.offsetY); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(view.offsetX, 0); ctx.lineTo(view.offsetX, canvas.height); ctx.stroke();
 
-    if (canvas.width > 200) {
+    // Etykiety cyfrowe
+    if (canvas.width > 150) {
       ctx.fillStyle = '#888888';
-      ctx.font = '11px system-ui';
+      ctx.font = '10px system-ui';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       
       for(let i = startX; i <= endX; i += step) {
-        if (i !== 0 && Math.abs(i) > 0.01) {
-          ctx.fillText(Number(i.toFixed(1)), view.offsetX + i * view.scale, view.offsetY + 6);
+        if (Math.abs(i) > 0.001 && Math.abs(i) / step >= 1) {
+          ctx.fillText(Number(i.toFixed(2)), view.offsetX + i * view.scale, view.offsetY + 5);
         }
       }
       
       ctx.textAlign = 'right';
       ctx.textBaseline = 'middle';
       for(let i = startY; i <= endY; i += step) {
-        if (i !== 0 && Math.abs(i) > 0.01) {
-          ctx.fillText(Number(i.toFixed(1)), view.offsetX - 6, view.offsetY - i * view.scale);
+        if (Math.abs(i) > 0.001 && Math.abs(i) / step >= 1) {
+          ctx.fillText(Number(i.toFixed(2)), view.offsetX - 5, view.offsetY - i * view.scale);
         }
       }
     }
@@ -514,7 +517,7 @@
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
 
-    // 1. Wykres f(x) (biała przerywana)
+    // 1. Funkcja bazowa f(x)
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.setLineDash([4, 4]);
     ctx.lineWidth = 1.5;
@@ -531,7 +534,7 @@
     }
     ctx.stroke();
 
-    // 2. Wykres g(x) (niebieska ciągła)
+    // 2. Funkcja przekształcona g(x)
     ctx.strokeStyle = '#3b82f6';
     ctx.setLineDash([]);
     ctx.lineWidth = 2.5;
@@ -572,7 +575,7 @@
     ctx.stroke();
   }
 
-  function updateUI() {
+  function updateUI(shouldAutoScale = false) {
     const mode = els.type.value;
     const fStr = els.fx.value;
     
@@ -606,11 +609,12 @@
       }
     }
 
-    autoScaleIfNeeded();
+    if (shouldAutoScale) {
+      autoScaleIfNeeded();
+    }
     drawGraph();
   }
 
-  // Funkcja zmiany zoomu przyciskami
   function zoomByFactor(factor) {
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
@@ -620,12 +624,12 @@
     view.scale *= factor;
 
     if(view.scale < 2) view.scale = 2;
-    if(view.scale > 1000) view.scale = 1000;
+    if(view.scale > 2000) view.scale = 2000;
 
     drawGraph();
   }
 
-  // --- OBSŁUGA DOTYKU I MYSZY (PAN & PINCH TO ZOOM) ---
+  // Dotyk i mysz
   function getTouchDistance(touches) {
     let dx = touches[0].clientX - touches[1].clientX;
     let dy = touches[0].clientY - touches[1].clientY;
@@ -647,7 +651,6 @@
 
   window.addEventListener('mouseup', () => { isDragging = false; });
 
-  // Dotyk (Pinch-to-zoom oraz przesuwanie jednym palcem)
   canvas.addEventListener('touchstart', (e) => {
     if (e.touches.length === 1) {
       isDragging = true;
@@ -671,9 +674,8 @@
     } else if (e.touches.length === 2 && initialPinchDist !== null) {
       let currentDist = getTouchDistance(e.touches);
       let factor = currentDist / initialPinchDist;
-      
       let newScale = initialScale * factor;
-      if (newScale >= 2 && newScale <= 1000) {
+      if (newScale >= 2 && newScale <= 2000) {
         view.scale = newScale;
         drawGraph();
       }
@@ -700,29 +702,25 @@
     view.scale *= zoomFactor;
     
     if(view.scale < 2) view.scale = 2;
-    if(view.scale > 1000) view.scale = 1000;
+    if(view.scale > 2000) view.scale = 2000;
 
     drawGraph();
   }, {passive: false});
 
-  // Obsługa przycisków UI
+  // Przyciski interfejsu
   els.btnZoomIn.addEventListener('click', (e) => { e.stopPropagation(); zoomByFactor(1.35); });
   els.btnZoomOut.addEventListener('click', (e) => { e.stopPropagation(); zoomByFactor(1 / 1.35); });
 
   els.btnCenter.addEventListener('click', (e) => {
     e.stopPropagation();
-    view.offsetX = canvas.width / 2;
-    view.offsetY = canvas.height / 2;
-    view.scale = 40;
-    updateUI();
+    autoScaleIfNeeded();
+    drawGraph();
   });
 
-  // Włączanie / Wyłączanie pełnego ekranu
   function toggleFullscreen() {
     document.body.classList.toggle('fullscreen-mode');
     setTimeout(() => {
-      view.offsetX = canvas.width / 2;
-      view.offsetY = canvas.height / 2;
+      autoScaleIfNeeded();
       drawGraph();
     }, 50);
   }
@@ -730,14 +728,20 @@
   els.btnFullscreen.addEventListener('click', toggleFullscreen);
   els.btnExitFs.addEventListener('click', toggleFullscreen);
 
-  [els.fx, els.type, els.p, els.q].forEach(el => el.addEventListener('input', updateUI));
-  els.type.addEventListener('change', updateUI); 
+  // Auto-skalowanie wywołujemy TYLKO przy zmianie wzoru funkcji lub trybu
+  els.fx.addEventListener('input', () => updateUI(true));
+  els.type.addEventListener('change', () => updateUI(true));
+  
+  // Przesuwanie suwakami nie resetuje auto-zoomu, tylko płynnie przesuwa wykres
+  [els.p, els.q].forEach(el => el.addEventListener('input', () => updateUI(false)));
 
   window.addEventListener('resize', () => {
     drawGraph();
   });
 
-  updateUI();
+  // Inicjalizacja
+  autoScaleIfNeeded();
+  updateUI(false);
 </script>
 </body>
 </html>
